@@ -1,0 +1,13 @@
+release/main.o
+release/loginwindow.o
+release/mainmenuwindow.o
+release/dashboardwindow.o
+release/projectwindow.o
+release/projectmanagementwindow.o
+release/stylehelper.o
+release/qrc_resources.o
+release/moc_loginwindow.o
+release/moc_mainmenuwindow.o
+release/moc_dashboardwindow.o
+release/moc_projectwindow.o
+release/moc_projectmanagementwindow.o

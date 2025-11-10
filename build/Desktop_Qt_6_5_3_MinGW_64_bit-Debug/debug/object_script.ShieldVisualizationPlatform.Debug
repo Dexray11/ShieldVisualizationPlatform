@@ -1,0 +1,13 @@
+debug/main.o
+debug/loginwindow.o
+debug/mainmenuwindow.o
+debug/dashboardwindow.o
+debug/projectwindow.o
+debug/projectmanagementwindow.o
+debug/stylehelper.o
+debug/qrc_resources.o
+debug/moc_loginwindow.o
+debug/moc_mainmenuwindow.o
+debug/moc_dashboardwindow.o
+debug/moc_projectwindow.o
+debug/moc_projectmanagementwindow.o
