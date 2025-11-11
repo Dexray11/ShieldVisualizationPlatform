@@ -356,7 +356,7 @@ void ProjectWindow::load2DView()
         painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
         painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
         painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "二维地质剖面图\n（请添加图片到 resources/images/geological_2d.png）");
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "二维地质剖面");
         imageLabel->setPixmap(placeholder);
     }
     imageLabel->setAlignment(Qt::AlignCenter);
@@ -436,7 +436,7 @@ void ProjectWindow::load3DView()
         painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
         painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
         painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "三维地质模型\n（请添加图片到 resources/images/geological_3d.png\n或集成3D渲染引擎）");
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "三维地质模型\n（集成3D渲染引擎）");
         imageLabel->setPixmap(placeholder);
     }
     imageLabel->setAlignment(Qt::AlignCenter);
