@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QLineEdit>
+#include <QButtonGroup>
 
 class ProjectManagementWindow : public QMainWindow
 {
@@ -39,6 +40,7 @@ private:
     QWidget *centralWidget;
     QWidget *sidebar;
     QTabWidget *tabWidget;
+    QButtonGroup *sidebarButtons;
     
     // 项目总览标签页组件
     QTableWidget *projectTable;

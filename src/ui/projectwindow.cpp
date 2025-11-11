@@ -13,14 +13,20 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QPainterPath>
+#include <QIcon>
 
 ProjectWindow::ProjectWindow(const QString &projectName, QWidget *parent)
     : QMainWindow(parent)
     , projectName(projectName)
 {
+    // 设置为独立窗口,确保任务栏显示
+    setWindowFlags(Qt::Window);
+    setAttribute(Qt::WA_DeleteOnClose);
+    
     setupUI();
 
     setWindowTitle(QString("项目详情 - %1").arg(projectName));
+    setWindowIcon(QIcon(":/icons/app_icon.ico"));
     resize(1400, 900);
 }
 
@@ -83,7 +89,9 @@ void ProjectWindow::createTopBar()
 
     topLayout->addWidget(backButton);
 
-    QPushButton *homeButton = new QPushButton("🏠 工作台", topBar);
+    QPushButton *homeButton = new QPushButton(" 工作台", topBar);
+    homeButton->setIcon(QIcon(":/icons/menu.png"));
+    homeButton->setIconSize(QSize(20, 20));
     homeButton->setStyleSheet(QString(R"(
     QPushButton {
         background-color: transparent;
@@ -149,6 +157,10 @@ void ProjectWindow::createSidebar()
         }
     )").arg(StyleHelper::COLOR_SECONDARY).arg(StyleHelper::COLOR_ACCENT);
 
+    mapViewButton = new QPushButton("工程俯视图", sidebar);
+    mapViewButton->setStyleSheet(buttonStyle);
+    connect(mapViewButton, &QPushButton::clicked, this, &ProjectWindow::onMapViewClicked);
+
     view2DButton = new QPushButton("二维视图", sidebar);
     view2DButton->setStyleSheet(buttonStyle);
     connect(view2DButton, &QPushButton::clicked, this, &ProjectWindow::on2DViewClicked);
@@ -169,6 +181,7 @@ void ProjectWindow::createSidebar()
     positioningButton->setStyleSheet(buttonStyle);
     connect(positioningButton, &QPushButton::clicked, this, &ProjectWindow::onPositioningClicked);
 
+    sidebarLayout->addWidget(mapViewButton);
     sidebarLayout->addWidget(view2DButton);
     sidebarLayout->addWidget(view3DButton);
     sidebarLayout->addWidget(excavationButton);
@@ -198,6 +211,11 @@ void ProjectWindow::clearMainContent()
         }
         delete item;
     }
+}
+
+void ProjectWindow::onMapViewClicked()
+{
+    loadMapView();
 }
 
 void ProjectWindow::on2DViewClicked()
@@ -356,7 +374,7 @@ void ProjectWindow::load2DView()
         painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
         painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
         painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "二维地质剖面");
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "二维地质剖面图\n（请添加图片到 resources/images/geological_2d.png）");
         imageLabel->setPixmap(placeholder);
     }
     imageLabel->setAlignment(Qt::AlignCenter);
@@ -436,7 +454,7 @@ void ProjectWindow::load3DView()
         painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
         painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
         painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "三维地质模型\n（集成3D渲染引擎）");
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "三维地质模型\n（请添加图片到 resources/images/geological_3d.png\n或集成3D渲染引擎）");
         imageLabel->setPixmap(placeholder);
     }
     imageLabel->setAlignment(Qt::AlignCenter);
@@ -539,100 +557,349 @@ void ProjectWindow::loadSupplementaryData()
     titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
 
-    // 创建数据显示面板
-    QWidget *dataPanel = new QWidget(mainContent);
-    dataPanel->setStyleSheet(QString(R"(
+    // 主要内容区域
+    QWidget *contentWidget = new QWidget(mainContent);
+    QHBoxLayout *contentLayout = new QHBoxLayout(contentWidget);
+    contentLayout->setSpacing(15);
+    
+    // 左侧区域 - 刀盘受力图
+    QWidget *leftWidget = new QWidget(contentWidget);
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftWidget);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    
+    // 刀盘受力图占位
+    QWidget *cutterPanel = new QWidget(leftWidget);
+    cutterPanel->setMinimumSize(350, 350);
+    cutterPanel->setStyleSheet(QString(R"(
         QWidget {
             background-color: white;
             border-radius: 10px;
             border: 1px solid %1;
         }
     )").arg(StyleHelper::COLOR_BORDER));
-
-    QVBoxLayout *dataLayout = new QVBoxLayout(dataPanel);
-    dataLayout->setContentsMargins(20, 20, 20, 20);
-
-    QLabel *descLabel = new QLabel("补勘数据说明", dataPanel);
-    descLabel->setStyleSheet(QString("font-size: 16px; font-weight: bold; color: %1; margin-bottom: 10px;")
-                                 .arg(StyleHelper::COLOR_PRIMARY));
-
-    QLabel *infoLabel = new QLabel(
-        "补勘数据通过盾构机上的传感器实时采集，主要包括：\n\n"
-        "1. 刀盘受力情况\n"
-        "   - 刀具贯入阻力\n"
-        "   - 刀盘正面摩擦力矩\n\n"
-        "2. 物探数据\n"
-        "   - 波速、波幅反射系数\n"
-        "   - 视电阻率\n"
-        "   - 应力梯度\n\n"
-        "3. 前方地质预测\n"
-        "   - 前方5m岩石含水概率\n"
-        "   - 掌子面岩石物性参数\n"
-        "   - 围岩危险等级\n\n"
-        "4. 岩层参数\n"
-        "   - 纵波波速、横波波速\n"
-        "   - 杨氏模量、泊松比\n"
-        "   - 岩层类型和分布规律",
-        dataPanel);
-    infoLabel->setStyleSheet(QString("color: %1; line-height: 1.8;").arg(StyleHelper::COLOR_TEXT_DARK));
-    infoLabel->setWordWrap(true);
-
-    dataLayout->addWidget(descLabel);
-    dataLayout->addWidget(infoLabel);
-
+    
+    QVBoxLayout *cutterLayout = new QVBoxLayout(cutterPanel);
+    QLabel *cutterPlaceholder = new QLabel("刀盘受力图\n(预留位置)", cutterPanel);
+    cutterPlaceholder->setAlignment(Qt::AlignCenter);
+    cutterPlaceholder->setStyleSheet("font-size: 16px; color: #666;");
+    cutterLayout->addWidget(cutterPlaceholder);
+    
+    // 刀盘受力情况信息
+    QWidget *cutterInfoPanel = new QWidget(leftWidget);
+    cutterInfoPanel->setStyleSheet(QString(R"(
+        QWidget {
+            background-color: white;
+            border-radius: 10px;
+            border: 1px solid %1;
+        }
+    )").arg(StyleHelper::COLOR_BORDER));
+    
+    QVBoxLayout *cutterInfoLayout = new QVBoxLayout(cutterInfoPanel);
+    cutterInfoLayout->setContentsMargins(15, 15, 15, 15);
+    cutterInfoLayout->setSpacing(8);
+    
+    QLabel *cutterTitle = new QLabel("刀盘受力情况:", cutterInfoPanel);
+    cutterTitle->setStyleSheet("font-weight: bold; font-size: 14px;");
+    cutterInfoLayout->addWidget(cutterTitle);
+    
+    // 刀具贯入阻力
+    QWidget *resist1Widget = new QWidget(cutterInfoPanel);
+    QHBoxLayout *resist1Layout = new QHBoxLayout(resist1Widget);
+    resist1Layout->setContentsMargins(0, 0, 0, 0);
+    resist1Layout->setSpacing(10);
+    
+    QLabel *cutterInfo1 = new QLabel("刀具贯入阻力:", resist1Widget);
+    cutterInfo1->setMinimumWidth(120);
+    QLineEdit *resist1Input = new QLineEdit(resist1Widget);
+    resist1Input->setPlaceholderText("数值");
+    resist1Input->setStyleSheet("QLineEdit { background-color: #f5f5f5; border: 1px solid #ccc; padding: 3px; }");
+    
+    resist1Layout->addWidget(cutterInfo1);
+    resist1Layout->addWidget(resist1Input);
+    
+    // 刀盘正面摩擦力矩
+    QWidget *resist2Widget = new QWidget(cutterInfoPanel);
+    QHBoxLayout *resist2Layout = new QHBoxLayout(resist2Widget);
+    resist2Layout->setContentsMargins(0, 0, 0, 0);
+    resist2Layout->setSpacing(10);
+    
+    QLabel *cutterInfo2 = new QLabel("刀盘正面摩擦力矩:", resist2Widget);
+    cutterInfo2->setMinimumWidth(120);
+    QLineEdit *resist2Input = new QLineEdit(resist2Widget);
+    resist2Input->setPlaceholderText("数值");
+    resist2Input->setStyleSheet("QLineEdit { background-color: #f5f5f5; border: 1px solid #ccc; padding: 3px; }");
+    
+    resist2Layout->addWidget(cutterInfo2);
+    resist2Layout->addWidget(resist2Input);
+    
+    cutterInfoLayout->addWidget(resist1Widget);
+    cutterInfoLayout->addWidget(resist2Widget);
+    cutterInfoLayout->addStretch();
+    
+    leftLayout->addWidget(cutterPanel);
+    leftLayout->addWidget(cutterInfoPanel);
+    leftLayout->addStretch();
+    
+    // 右侧区域 - 三个数据面板
+    QWidget *rightWidget = new QWidget(contentWidget);
+    QVBoxLayout *rightLayout = new QVBoxLayout(rightWidget);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setSpacing(15);
+    
+    // 物探数据面板
+    QWidget *geophysicalPanel = new QWidget(rightWidget);
+    geophysicalPanel->setStyleSheet(QString(R"(
+        QWidget {
+            background-color: #e3f2fd;
+            border-radius: 10px;
+            border: 1px solid %1;
+        }
+    )").arg(StyleHelper::COLOR_BORDER));
+    
+    QVBoxLayout *geophysicalLayout = new QVBoxLayout(geophysicalPanel);
+    geophysicalLayout->setContentsMargins(15, 15, 15, 15);
+    geophysicalLayout->setSpacing(5);
+    
+    QStringList geophysicalData = {
+        "波速、波幅反射系数:",
+        "视电阻率:",
+        "应力梯度:",
+        "前方5m岩石含水概率:",
+        "掌子面岩石物性参数:",
+        "围岩危险等级:"
+    };
+    
+    for (const QString &item : geophysicalData) {
+        QWidget *itemWidget = new QWidget(geophysicalPanel);
+        QHBoxLayout *itemLayout = new QHBoxLayout(itemWidget);
+        itemLayout->setContentsMargins(0, 0, 0, 0);
+        itemLayout->setSpacing(10);
+        
+        QLabel *label = new QLabel(item, itemWidget);
+        label->setStyleSheet("font-size: 13px;");
+        label->setMinimumWidth(150);
+        
+        QLineEdit *valueInput = new QLineEdit(itemWidget);
+        valueInput->setPlaceholderText("数值");
+        valueInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
+        valueInput->setMinimumWidth(150);
+        
+        itemLayout->addWidget(label);
+        itemLayout->addWidget(valueInput);
+        itemLayout->addStretch();
+        
+        geophysicalLayout->addWidget(itemWidget);
+    }
+    
+    // 岩层参数面板(左下)
+    QWidget *rockPanel = new QWidget(rightWidget);
+    rockPanel->setStyleSheet(QString(R"(
+        QWidget {
+            background-color: #e1f5fe;
+            border-radius: 10px;
+            border: 1px solid %1;
+        }
+    )").arg(StyleHelper::COLOR_BORDER));
+    
+    QVBoxLayout *rockLayout = new QVBoxLayout(rockPanel);
+    rockLayout->setContentsMargins(15, 15, 15, 15);
+    rockLayout->setSpacing(5);
+    
+    QStringList rockData = {
+        "岩层参数:",
+        "纵波波速:",
+        "横波波速:",
+        "杨氏模量:",
+        "横纵波速比:",
+        "泊松比:"
+    };
+    
+    for (const QString &item : rockData) {
+        QWidget *itemWidget = new QWidget(rockPanel);
+        QHBoxLayout *itemLayout = new QHBoxLayout(itemWidget);
+        itemLayout->setContentsMargins(0, 0, 0, 0);
+        itemLayout->setSpacing(10);
+        
+        QLabel *label = new QLabel(item, itemWidget);
+        label->setStyleSheet("font-size: 13px;");
+        label->setMinimumWidth(100);
+        
+        QLineEdit *valueInput = new QLineEdit(itemWidget);
+        valueInput->setPlaceholderText("数值");
+        valueInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
+        valueInput->setMinimumWidth(120);
+        
+        itemLayout->addWidget(label);
+        itemLayout->addWidget(valueInput);
+        itemLayout->addStretch();
+        
+        rockLayout->addWidget(itemWidget);
+    }
+    
+    // 岩层类型面板(右下)
+    QWidget *rockTypePanel = new QWidget(rightWidget);
+    rockTypePanel->setStyleSheet(QString(R"(
+        QWidget {
+            background-color: #e1f5fe;
+            border-radius: 10px;
+            border: 1px solid %1;
+        }
+    )").arg(StyleHelper::COLOR_BORDER));
+    
+    QVBoxLayout *rockTypeLayout = new QVBoxLayout(rockTypePanel);
+    rockTypeLayout->setContentsMargins(15, 15, 15, 15);
+    rockTypeLayout->setSpacing(10);
+    
+    // 岩层类型输入
+    QWidget *typeWidget = new QWidget(rockTypePanel);
+    QHBoxLayout *typeLayout = new QHBoxLayout(typeWidget);
+    typeLayout->setContentsMargins(0, 0, 0, 0);
+    typeLayout->setSpacing(10);
+    
+    QLabel *rockTypeLabel = new QLabel("岩层类型:", typeWidget);
+    rockTypeLabel->setStyleSheet("font-size: 13px;");
+    rockTypeLabel->setMinimumWidth(80);
+    
+    QLineEdit *typeInput = new QLineEdit(typeWidget);
+    typeInput->setPlaceholderText("类型");
+    typeInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
+    
+    typeLayout->addWidget(rockTypeLabel);
+    typeLayout->addWidget(typeInput);
+    
+    // 分布规律输入
+    QWidget *distWidget = new QWidget(rockTypePanel);
+    QHBoxLayout *distLayout = new QHBoxLayout(distWidget);
+    distLayout->setContentsMargins(0, 0, 0, 0);
+    distLayout->setSpacing(10);
+    
+    QLabel *rockDistLabel = new QLabel("分布规律:", distWidget);
+    rockDistLabel->setStyleSheet("font-size: 13px;");
+    rockDistLabel->setMinimumWidth(80);
+    
+    QLineEdit *distInput = new QLineEdit(distWidget);
+    distInput->setPlaceholderText("规律");
+    distInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
+    
+    distLayout->addWidget(rockDistLabel);
+    distLayout->addWidget(distInput);
+    
+    // 上传时间间隔
+    QWidget *uploadWidget = new QWidget(rockTypePanel);
+    QHBoxLayout *uploadLayout = new QHBoxLayout(uploadWidget);
+    uploadLayout->setContentsMargins(0, 0, 0, 0);
+    uploadLayout->setSpacing(10);
+    
+    QLabel *uploadLabel = new QLabel("上传时间间隔:", uploadWidget);
+    uploadLabel->setStyleSheet("font-size: 13px;");
+    QLineEdit *uploadInput = new QLineEdit("5", uploadWidget);
+    uploadInput->setFixedWidth(50);
+    uploadInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
+    QLabel *uploadUnit = new QLabel("s", uploadWidget);
+    uploadUnit->setStyleSheet("font-size: 13px;");
+    
+    // 使用主题色的深色按钮
+    QPushButton *uploadCheck = new QPushButton("✓", uploadWidget);
+    uploadCheck->setFixedSize(30, 30);
+    uploadCheck->setStyleSheet(QString(R"(
+        QPushButton {
+            background-color: %1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: %2;
+        }
+        QPushButton:pressed {
+            background-color: %3;
+        }
+    )").arg(StyleHelper::COLOR_PRIMARY)
+       .arg(StyleHelper::COLOR_SECONDARY)
+       .arg(StyleHelper::COLOR_ACCENT));
+    
+    uploadLayout->addWidget(uploadLabel);
+    uploadLayout->addWidget(uploadInput);
+    uploadLayout->addWidget(uploadUnit);
+    uploadLayout->addWidget(uploadCheck);
+    uploadLayout->addStretch();
+    
+    rockTypeLayout->addWidget(typeWidget);
+    rockTypeLayout->addWidget(distWidget);
+    rockTypeLayout->addWidget(uploadWidget);
+    rockTypeLayout->addStretch();
+    
+    // 将下方两个面板放入水平布局
+    QWidget *bottomPanels = new QWidget(rightWidget);
+    QHBoxLayout *bottomLayout = new QHBoxLayout(bottomPanels);
+    bottomLayout->setSpacing(15);
+    bottomLayout->setContentsMargins(0, 0, 0, 0);
+    bottomLayout->addWidget(rockPanel);
+    bottomLayout->addWidget(rockTypePanel);
+    
+    rightLayout->addWidget(geophysicalPanel, 2);
+    rightLayout->addWidget(bottomPanels, 2);
+    
+    contentLayout->addWidget(leftWidget, 2);
+    contentLayout->addWidget(rightWidget, 3);
+    
     layout->addWidget(titleLabel);
-    layout->addWidget(dataPanel);
+    layout->addWidget(contentWidget);
     layout->addStretch();
 }
 
 void ProjectWindow::showPositioningDialog()
 {
     QDialog dialog(this);
-    dialog.setWindowTitle("定位校准");
-    dialog.setFixedSize(650, 600);
-    dialog.setStyleSheet("QDialog { background-color: #f5f5f5; }");
+    dialog.setWindowTitle("定位校准 - 确定盾构机位置（三选一）");
+    dialog.setMinimumSize(750, 700);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
 
-    QVBoxLayout *layout = new QVBoxLayout(&dialog);
-    layout->setSpacing(20);
-    layout->setContentsMargins(30, 30, 30, 30);
+    QVBoxLayout *mainLayout = new QVBoxLayout(&dialog);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(25, 25, 25, 25);
 
+    // 标题
     QLabel *titleLabel = new QLabel("定位校准 - 确定盾构机位置（三选一）", &dialog);
-    titleLabel->setStyleSheet(QString("font-size: 18px; font-weight: bold; color: %1; background-color: transparent;")
+    titleLabel->setStyleSheet(QString("font-size: 16px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
+    titleLabel->setAlignment(Qt::AlignCenter);
 
-    // 改进的输入框样式 - 更大的文本框，更好的对比度
+    // 输入框样式
     QString inputStyle = R"(
         QLineEdit {
-            padding: 8px 12px;
-            font-size: 14px;
-            border: 2px solid #ccc;
-            border-radius: 4px;
+            padding: 8px;
+            font-size: 13px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
             background-color: white;
             color: #333;
-            min-height: 30px;
         }
         QLineEdit:focus {
             border: 2px solid )" + QString(StyleHelper::COLOR_PRIMARY) + R"(;
         }
     )";
     
+    QString labelStyle = "font-size: 13px; color: #333; font-weight: bold;";
+    
     QString groupBoxStyle = QString(R"(
         QGroupBox {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             color: %1;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            margin-top: 12px;
-            padding-top: 15px;
-            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+            padding: 15px 10px 10px 10px;
+            background-color: #fafafa;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
-            left: 15px;
+            subcontrol-position: top left;
+            left: 10px;
             padding: 0 5px;
-            color: %1;
-            background-color: white;
         }
     )").arg(StyleHelper::COLOR_PRIMARY);
 
@@ -640,112 +907,157 @@ void ProjectWindow::showPositioningDialog()
     QGroupBox *gpsGroup = new QGroupBox("链接GPS定位装置", &dialog);
     gpsGroup->setStyleSheet(groupBoxStyle);
     QHBoxLayout *gpsLayout = new QHBoxLayout(gpsGroup);
-    gpsLayout->setContentsMargins(15, 10, 15, 10);
-    QPushButton *device1 = new QPushButton("演示装置1", &dialog);
-    QPushButton *device2 = new QPushButton("演示装置2", &dialog);
+    gpsLayout->setContentsMargins(10, 20, 10, 10);
+    gpsLayout->setSpacing(10);
+    
+    QPushButton *device1 = new QPushButton("演示装置1", gpsGroup);
+    QPushButton *device2 = new QPushButton("演示装置2", gpsGroup);
     device1->setStyleSheet(StyleHelper::getButtonStyle());
     device2->setStyleSheet(StyleHelper::getButtonStyle());
-    device1->setMinimumHeight(40);
-    device2->setMinimumHeight(40);
+    device1->setMinimumHeight(35);
+    device2->setMinimumHeight(35);
     gpsLayout->addWidget(device1);
     gpsLayout->addWidget(device2);
 
     // 坐标输入
     QGroupBox *coordsGroup = new QGroupBox("输入坐标确定盾构机位置", &dialog);
     coordsGroup->setStyleSheet(groupBoxStyle);
-    QFormLayout *coordsLayout = new QFormLayout(coordsGroup);
-    coordsLayout->setContentsMargins(15, 15, 15, 15);
-    coordsLayout->setSpacing(12);
-    coordsLayout->setLabelAlignment(Qt::AlignRight);
+    QGridLayout *coordsLayout = new QGridLayout(coordsGroup);
+    coordsLayout->setContentsMargins(10, 25, 10, 10);
+    coordsLayout->setHorizontalSpacing(10);
+    coordsLayout->setVerticalSpacing(10);
+    coordsLayout->setColumnStretch(1, 1);
     
-    QLabel *label1 = new QLabel("前盾：", &dialog);
-    QLabel *label2 = new QLabel("盾尾：", &dialog);
-    QLabel *label3 = new QLabel("深度：", &dialog);
-    QLabel *label4 = new QLabel("倾角：", &dialog);
-    label1->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label2->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label3->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label4->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
+    QLabel *label1 = new QLabel("前盾:", coordsGroup);
+    QLabel *label2 = new QLabel("盾尾:", coordsGroup);
+    QLabel *label3 = new QLabel("深度:", coordsGroup);
+    QLabel *label4 = new QLabel("倾角:", coordsGroup);
+    label1->setStyleSheet(labelStyle);
+    label2->setStyleSheet(labelStyle);
+    label3->setStyleSheet(labelStyle);
+    label4->setStyleSheet(labelStyle);
+    label1->setFixedWidth(50);
+    label2->setFixedWidth(50);
+    label3->setFixedWidth(50);
+    label4->setFixedWidth(50);
     
-    QLineEdit *frontShieldCoords = new QLineEdit("120.36,36.23", &dialog);
-    QLineEdit *tailShieldCoords = new QLineEdit("120.36,36.23", &dialog);
-    QLineEdit *depth1 = new QLineEdit("15", &dialog);
-    QLineEdit *angle1 = new QLineEdit("9.83", &dialog);
+    QLineEdit *frontShieldCoords = new QLineEdit("120.36,36.23", coordsGroup);
+    QLineEdit *tailShieldCoords = new QLineEdit("120.36,36.23", coordsGroup);
+    QLineEdit *depth1 = new QLineEdit("15", coordsGroup);
+    QLineEdit *angle1 = new QLineEdit("9.83", coordsGroup);
     
     frontShieldCoords->setStyleSheet(inputStyle);
     tailShieldCoords->setStyleSheet(inputStyle);
     depth1->setStyleSheet(inputStyle);
     angle1->setStyleSheet(inputStyle);
     
-    coordsLayout->addRow(label1, frontShieldCoords);
-    coordsLayout->addRow(label2, tailShieldCoords);
-    coordsLayout->addRow(label3, depth1);
-    coordsLayout->addRow(label4, angle1);
+    frontShieldCoords->setMinimumHeight(32);
+    tailShieldCoords->setMinimumHeight(32);
+    depth1->setMinimumHeight(32);
+    angle1->setMinimumHeight(32);
+    
+    coordsLayout->addWidget(label1, 0, 0);
+    coordsLayout->addWidget(frontShieldCoords, 0, 1);
+    coordsLayout->addWidget(label2, 1, 0);
+    coordsLayout->addWidget(tailShieldCoords, 1, 1);
+    coordsLayout->addWidget(label3, 2, 0);
+    coordsLayout->addWidget(depth1, 2, 1);
+    coordsLayout->addWidget(label4, 3, 0);
+    coordsLayout->addWidget(angle1, 3, 1);
 
     // 桩号输入
     QGroupBox *stakeGroup = new QGroupBox("输入桩号确定盾构机位置", &dialog);
     stakeGroup->setStyleSheet(groupBoxStyle);
-    QFormLayout *stakeLayout = new QFormLayout(stakeGroup);
-    stakeLayout->setContentsMargins(15, 15, 15, 15);
-    stakeLayout->setSpacing(12);
-    stakeLayout->setLabelAlignment(Qt::AlignRight);
+    QGridLayout *stakeLayout = new QGridLayout(stakeGroup);
+    stakeLayout->setContentsMargins(10, 25, 10, 10);
+    stakeLayout->setHorizontalSpacing(10);
+    stakeLayout->setVerticalSpacing(10);
+    stakeLayout->setColumnStretch(1, 1);
     
-    QLabel *label5 = new QLabel("前盾：", &dialog);
-    QLabel *label6 = new QLabel("盾尾：", &dialog);
-    QLabel *label7 = new QLabel("深度：", &dialog);
-    QLabel *label8 = new QLabel("倾角：", &dialog);
-    label5->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label6->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label7->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
-    label8->setStyleSheet("font-size: 14px; color: #333; background-color: transparent;");
+    QLabel *label5 = new QLabel("前盾:", stakeGroup);
+    QLabel *label6 = new QLabel("盾尾:", stakeGroup);
+    QLabel *label7 = new QLabel("深度:", stakeGroup);
+    QLabel *label8 = new QLabel("倾角:", stakeGroup);
+    label5->setStyleSheet(labelStyle);
+    label6->setStyleSheet(labelStyle);
+    label7->setStyleSheet(labelStyle);
+    label8->setStyleSheet(labelStyle);
+    label5->setFixedWidth(50);
+    label6->setFixedWidth(50);
+    label7->setFixedWidth(50);
+    label8->setFixedWidth(50);
     
-    QLineEdit *frontStake = new QLineEdit("K1+190.265", &dialog);
-    QLineEdit *tailStake = new QLineEdit("K1+210.265", &dialog);
-    QLineEdit *depth2 = new QLineEdit("12", &dialog);
-    QLineEdit *angle2 = new QLineEdit("11.60", &dialog);
+    QLineEdit *frontStake = new QLineEdit("K1+190.265", stakeGroup);
+    QLineEdit *tailStake = new QLineEdit("K1+210.265", stakeGroup);
+    QLineEdit *depth2 = new QLineEdit("12", stakeGroup);
+    QLineEdit *angle2 = new QLineEdit("11.60", stakeGroup);
     
     frontStake->setStyleSheet(inputStyle);
     tailStake->setStyleSheet(inputStyle);
     depth2->setStyleSheet(inputStyle);
     angle2->setStyleSheet(inputStyle);
     
-    stakeLayout->addRow(label5, frontStake);
-    stakeLayout->addRow(label6, tailStake);
-    stakeLayout->addRow(label7, depth2);
-    stakeLayout->addRow(label8, angle2);
+    frontStake->setMinimumHeight(32);
+    tailStake->setMinimumHeight(32);
+    depth2->setMinimumHeight(32);
+    angle2->setMinimumHeight(32);
+    
+    stakeLayout->addWidget(label5, 0, 0);
+    stakeLayout->addWidget(frontStake, 0, 1);
+    stakeLayout->addWidget(label6, 1, 0);
+    stakeLayout->addWidget(tailStake, 1, 1);
+    stakeLayout->addWidget(label7, 2, 0);
+    stakeLayout->addWidget(depth2, 2, 1);
+    stakeLayout->addWidget(label8, 3, 0);
+    stakeLayout->addWidget(angle2, 3, 1);
 
-    // 按钮
-    QDialogButtonBox *buttonBox = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    buttonBox->button(QDialogButtonBox::Ok)->setText("确认");
-    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
-    buttonBox->button(QDialogButtonBox::Ok)->setMinimumHeight(40);
-    buttonBox->button(QDialogButtonBox::Cancel)->setMinimumHeight(40);
-    buttonBox->setStyleSheet(QString(R"(
+    // 底部按钮
+    QWidget *buttonWidget = new QWidget(&dialog);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonWidget);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    buttonLayout->addStretch();
+    
+    QPushButton *confirmBtn = new QPushButton("确认", buttonWidget);
+    QPushButton *cancelBtn = new QPushButton("取消", buttonWidget);
+    
+    QString btnStyle = QString(R"(
         QPushButton {
-            padding: 8px 24px;
-            font-size: 14px;
-            font-weight: bold;
+            padding: 8px 25px;
+            font-size: 13px;
+            background-color: %1;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            min-width: 80px;
         }
-    )") + StyleHelper::getButtonStyle());
-    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        QPushButton:hover {
+            background-color: %2;
+        }
+    )").arg(StyleHelper::COLOR_PRIMARY).arg(StyleHelper::COLOR_SECONDARY);
+    
+    confirmBtn->setStyleSheet(btnStyle);
+    cancelBtn->setStyleSheet(btnStyle);
+    confirmBtn->setMinimumHeight(36);
+    cancelBtn->setMinimumHeight(36);
+    
+    connect(confirmBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    buttonLayout->addWidget(confirmBtn);
+    buttonLayout->addWidget(cancelBtn);
 
-    layout->addWidget(titleLabel);
-    layout->addWidget(gpsGroup);
-    layout->addWidget(coordsGroup);
-    layout->addWidget(stakeGroup);
-    layout->addWidget(buttonBox);
+    mainLayout->addWidget(titleLabel);
+    mainLayout->addWidget(gpsGroup);
+    mainLayout->addWidget(coordsGroup);
+    mainLayout->addWidget(stakeGroup);
+    mainLayout->addWidget(buttonWidget);
 
-    if (dialog.exec() == QDialog::Accepted) {
-        QMessageBox::information(this, "提示", "定位校准已完成！");
-    }
+    dialog.exec();
 }
+
 
 void ProjectWindow::onBackClicked()
 {
-    this->close();
-    if (parentWidget()) {
-        parentWidget()->show();
-    }
+    emit backToDashboard();  // 发射返回信号
+    this->hide();  // 隐藏而不是关闭
 }

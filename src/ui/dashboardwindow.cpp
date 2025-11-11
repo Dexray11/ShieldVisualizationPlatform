@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QMessageBox>
+#include <QIcon>
 
 DashboardWindow::DashboardWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,6 +17,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     loadProjects();
 
     setWindowTitle("智能盾构地质可视化平台 - 可视化平台");
+    setWindowIcon(QIcon(":/icons/app_icon.ico"));
     resize(1400, 900);
 
     QScreen *screen = QApplication::primaryScreen();
@@ -114,7 +116,9 @@ void DashboardWindow::createTopBar()
     });
 
     // 工作台按钮
-    workbenchButton = new QPushButton("🏠 工作台", topBar);
+    workbenchButton = new QPushButton(" 工作台", topBar);
+    workbenchButton->setIcon(QIcon(":/icons/menu.png"));
+    workbenchButton->setIconSize(QSize(20, 20));
     workbenchButton->setStyleSheet(QString(R"(
         QPushButton {
             background-color: transparent;
@@ -295,7 +299,7 @@ void DashboardWindow::createStatisticsPanel()
     QVBoxLayout *statsLayout = new QVBoxLayout(statisticsPanel);
     statsLayout->setContentsMargins(15, 15, 15, 15);
 
-    statisticsLabel = new QLabel("北京地铁在建线路\n11条线（段）盾构\n法施工区间占比\n68%", statisticsPanel);
+    statisticsLabel = new QLabel("在建项目统计", statisticsPanel);
     statisticsLabel->setStyleSheet(QString("color: %1; font-size: 14px; font-weight: bold;")
                                        .arg(StyleHelper::COLOR_TEXT_DARK));
     statisticsLabel->setAlignment(Qt::AlignCenter);
@@ -303,42 +307,13 @@ void DashboardWindow::createStatisticsPanel()
 
     statsLayout->addWidget(statisticsLabel);
 
-    for (int i = 0; i < 4; i++) {
-        QWidget *progressWidget = new QWidget(statisticsPanel);
-        QHBoxLayout *progressLayout = new QHBoxLayout(progressWidget);
-        progressLayout->setContentsMargins(0, 5, 0, 5);
-
-        QLabel *projectLabel = new QLabel(QString("在建项目%1").arg(i+1), progressWidget);
-        projectLabel->setFixedWidth(80);
-
-        QProgressBar *progressBar = new QProgressBar(progressWidget);
-        progressBar->setValue(66.7);
-        progressBar->setFormat("66.7%");
-        progressBar->setStyleSheet(QString(R"(
-            QProgressBar {
-                border: none;
-                border-radius: 5px;
-                text-align: center;
-                background-color: #f0f0f0;
-                color: %1;
-                height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                                stop:0 %2, stop:1 %3);
-                border-radius: 5px;
-            }
-        )").arg(StyleHelper::COLOR_TEXT_DARK)
-                                       .arg(StyleHelper::COLOR_SECONDARY)
-                                       .arg(StyleHelper::COLOR_ACCENT));
-
-        progressLayout->addWidget(projectLabel);
-        progressLayout->addWidget(progressBar);
-
-        statsLayout->addWidget(progressWidget);
-        progressBars.append(progressBar);
-    }
-
+    // 创建一个容器来保存进度条,以便动态更新
+    progressContainer = new QWidget(statisticsPanel);
+    progressContainerLayout = new QVBoxLayout(progressContainer);
+    progressContainerLayout->setContentsMargins(0, 0, 0, 0);
+    progressContainerLayout->setSpacing(5);
+    
+    statsLayout->addWidget(progressContainer);
     statsLayout->addStretch();
 }
 
@@ -405,7 +380,16 @@ void DashboardWindow::onWorkbenchClicked()
 void DashboardWindow::openProjectView()
 {
     if (!selectedProject.isEmpty()) {
-        ProjectWindow *projectWin = new ProjectWindow(selectedProject, this);
+        // 传入nullptr而不是this,让ProjectWindow成为独立顶层窗口
+        ProjectWindow *projectWin = new ProjectWindow(selectedProject, nullptr);
+        projectWin->setAttribute(Qt::WA_DeleteOnClose);
+        
+        // 连接返回信号 - 当ProjectWindow返回时，显示Dashboard并关闭ProjectWindow
+        connect(projectWin, &ProjectWindow::backToDashboard, this, [this, projectWin]() {
+            this->show();  // 显示Dashboard
+            projectWin->close();  // 关闭ProjectWindow(会自动删除，因为有WA_DeleteOnClose)
+        });
+        
         projectWin->show();
         this->hide();
     }
@@ -455,6 +439,62 @@ void DashboardWindow::showAllProjects()
                              "项目总数: 1\n"
                              "平均进度: 56%\n"
                              "预警数量: 4");
+    
+    // 清除旧的进度条
+    QLayoutItem *item;
+    while ((item = progressContainerLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+    
+    // 根据项目数量动态创建进度条
+    struct ProjectProgress {
+        QString name;
+        int progress;
+    };
+    
+    QList<ProjectProgress> projects = {
+        {"青岛沿海公路示例工程", 56}
+    };
+    
+    for (const auto& proj : projects) {
+        QWidget *progressWidget = new QWidget(progressContainer);
+        QVBoxLayout *progressLayout = new QVBoxLayout(progressWidget);
+        progressLayout->setContentsMargins(0, 5, 0, 5);
+        progressLayout->setSpacing(5);
+
+        QLabel *projectLabel = new QLabel(proj.name, progressWidget);
+        projectLabel->setStyleSheet("font-size: 12px;");
+        projectLabel->setWordWrap(true);
+
+        QProgressBar *progressBar = new QProgressBar(progressWidget);
+        progressBar->setValue(proj.progress);
+        progressBar->setFormat(QString("%1%").arg(proj.progress));
+        progressBar->setStyleSheet(QString(R"(
+            QProgressBar {
+                border: none;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #f0f0f0;
+                color: %1;
+                height: 20px;
+            }
+            QProgressBar::chunk {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                                stop:0 %2, stop:1 %3);
+                border-radius: 5px;
+            }
+        )").arg(StyleHelper::COLOR_TEXT_DARK)
+                                       .arg(StyleHelper::COLOR_SECONDARY)
+                                       .arg(StyleHelper::COLOR_ACCENT));
+
+        progressLayout->addWidget(projectLabel);
+        progressLayout->addWidget(progressBar);
+
+        progressContainerLayout->addWidget(progressWidget);
+    }
 }
 
 void DashboardWindow::showSingleProject(const QString &projectName)
@@ -480,4 +520,49 @@ void DashboardWindow::showSingleProject(const QString &projectName)
 
     contact1Label->setText("张三  电话：15555555555");
     contact2Label->setText("李四  电话：16666666666");
+    
+    // 清除旧的进度条
+    QLayoutItem *item;
+    while ((item = progressContainerLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+    
+    // 显示当前项目的进度条
+    QWidget *progressWidget = new QWidget(progressContainer);
+    QVBoxLayout *progressLayout = new QVBoxLayout(progressWidget);
+    progressLayout->setContentsMargins(0, 5, 0, 5);
+    progressLayout->setSpacing(5);
+
+    QLabel *projectLabel = new QLabel(projectName, progressWidget);
+    projectLabel->setStyleSheet("font-size: 12px;");
+    projectLabel->setWordWrap(true);
+
+    QProgressBar *progressBar = new QProgressBar(progressWidget);
+    progressBar->setValue(56);
+    progressBar->setFormat("56%");
+    progressBar->setStyleSheet(QString(R"(
+        QProgressBar {
+            border: none;
+            border-radius: 5px;
+            text-align: center;
+            background-color: #f0f0f0;
+            color: %1;
+            height: 20px;
+        }
+        QProgressBar::chunk {
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                            stop:0 %2, stop:1 %3);
+            border-radius: 5px;
+        }
+    )").arg(StyleHelper::COLOR_TEXT_DARK)
+                                   .arg(StyleHelper::COLOR_SECONDARY)
+                                   .arg(StyleHelper::COLOR_ACCENT));
+
+    progressLayout->addWidget(projectLabel);
+    progressLayout->addWidget(progressBar);
+
+    progressContainerLayout->addWidget(progressWidget);
 }

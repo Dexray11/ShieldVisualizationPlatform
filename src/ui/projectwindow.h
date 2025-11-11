@@ -16,8 +16,12 @@ public:
     explicit ProjectWindow(const QString &projectName, QWidget *parent = nullptr);
     ~ProjectWindow();
 
+signals:
+    void backToDashboard();  // 返回信号
+
 private slots:
     void onBackClicked();
+    void onMapViewClicked();
     void on2DViewClicked();
     void on3DViewClicked();
     void onExcavationParamsClicked();
@@ -44,6 +48,7 @@ private:
     QPushButton *backButton;
     
     // 侧边栏按钮
+    QPushButton *mapViewButton;
     QPushButton *view2DButton;
     QPushButton *view3DButton;
     QPushButton *excavationButton;

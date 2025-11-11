@@ -62,6 +62,8 @@ private:
     QWidget *statisticsPanel;
     QLabel *statisticsLabel;
     QList<QProgressBar*> progressBars;
+    QWidget *progressContainer;
+    QVBoxLayout *progressContainerLayout;
     
     // 联系人面板
     QWidget *contactPanel;

@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QFile>
 #include <QTextStream>
+#include <QIcon>
 #include "src/ui/loginwindow.h"
 #include "src/utils/stylehelper.h"
 
@@ -12,6 +13,9 @@ int main(int argc, char *argv[])
     a.setApplicationName("智能盾构地质可视化平台");
     a.setOrganizationName("山东科技大学");
     a.setApplicationVersion("1.0.0");
+    
+    // 设置应用程序图标
+    a.setWindowIcon(QIcon(":/icons/app_icon.ico"));
     
     // 应用全局样式
     StyleHelper::applyGlobalStyle(&a);

@@ -201,23 +201,31 @@ void MainMenuWindow::onProjectManagementClicked()
 
 void MainMenuWindow::onUserManualClicked()
 {
-    QMessageBox::information(this, "使用手册",
-                             "智能盾构地质可视化平台使用手册\n\n"
-                             "1. 打开项目：查看和管理在建项目的大数据可视化\n"
-                             "2. 项目管理：新建、编辑、删除项目，管理预警信息\n"
-                             "3. 使用手册：查看系统使用说明\n"
-                             "4. 注意事项：查看系统使用注意事项\n\n"
-                             "详细手册请参考系统文档。");
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("使用手册");
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setText("智能盾构地质可视化平台使用手册\n\n"
+                   "1. 打开项目：查看和管理在建项目的大数据可视化\n"
+                   "2. 项目管理:新建、编辑、删除项目,管理预警信息\n"
+                   "3. 使用手册：查看系统使用说明\n"
+                   "4. 注意事项：查看系统使用注意事项\n\n"
+                   "详细手册请参考系统文档。");
+    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+    msgBox.exec();
 }
 
 void MainMenuWindow::onNoticeClicked()
 {
-    QMessageBox::warning(this, "注意事项",
-                         "系统使用注意事项：\n\n"
-                         "1. 请确保定位数据准确，定期进行定位校准\n"
-                         "2. 注意监控预警信息，及时处理高级别预警\n"
-                         "3. 定期备份项目数据\n"
-                         "4. 补勘数据应及时上传和更新\n"
-                         "5. 系统维护期间请勿进行关键操作\n\n"
-                         "如有问题请联系技术支持。");
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("注意事项");
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setText("系统使用注意事项：\n\n"
+                   "1. 请确保定位数据准确，定期进行定位校准\n"
+                   "2. 注意监控预警信息，及时处理高级别预警\n"
+                   "3. 定期备份项目数据\n"
+                   "4. 补勘数据应及时上传和更新\n"
+                   "5. 系统维护期间请勿进行关键操作\n\n"
+                   "如有问题请联系技术支持。");
+    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+    msgBox.exec();
 }
