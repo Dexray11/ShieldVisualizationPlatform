@@ -1,10 +1,5 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
-    <qresource>
-        <!-- 图片资源 -->
-
-        
-        <!-- 图标资源 -->
+<RCC>
+    <qresource prefix="/">
         <file>icons/menu.png</file>
         <file>icons/folder.png</file>
         <file>icons/add.png</file>
@@ -16,5 +11,7 @@
         <file>icons/filter.png</file>
         <file>icons/export.png</file>
         <file>icons/app_icon.ico</file>
+        <file>icons/flag.png</file>
+        <file>icons/lock.png</file>
     </qresource>
 </RCC>

@@ -256,15 +256,15 @@ void ProjectManagementWindow::createProjectOverviewTab()
     // 设置表格的SizePolicy
     projectTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
-    // 设置表格默认行高 - 关键!
-    projectTable->verticalHeader()->setDefaultSectionSize(40);
+    // 问题2彻底修复：设置表格默认行高为50px，确保按钮有足够垂直空间
+    projectTable->verticalHeader()->setDefaultSectionSize(50);
     
-    // 设置列可随窗口调整大小
+    // 问题2彻底修复：先设置所有列为Stretch
     projectTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     
-    // 固定操作列宽度
+    // 问题2彻底修复：然后将操作列设置为Fixed，宽度为200px
     projectTable->horizontalHeader()->setSectionResizeMode(7, QHeaderView::Fixed);
-    projectTable->setColumnWidth(7, 140);
+    projectTable->setColumnWidth(7, 200);  // 增加到200px确保完整显示
     
     projectTable->setAlternatingRowColors(true);
     projectTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -512,12 +512,14 @@ void ProjectManagementWindow::createNewsModuleTab()
     newsTable->setStyleSheet(StyleHelper::getTableStyle());
     newsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
-    // 设置默认行高
-    newsTable->verticalHeader()->setDefaultSectionSize(40);
+    // 问题2彻底修复：设置默认行高为50px
+    newsTable->verticalHeader()->setDefaultSectionSize(50);
     
+    // 问题2彻底修复：先设置所有列Stretch
     newsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    // 问题2彻底修复：操作列固定为200px
     newsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-    newsTable->setColumnWidth(2, 140);
+    newsTable->setColumnWidth(2, 200);  // 增加到200px
     newsTable->setAlternatingRowColors(true);
 
     layout->addWidget(topWidget);
@@ -545,45 +547,38 @@ void ProjectManagementWindow::loadProjectData()
             projectTable->setItem(row, col, item);
         }
         
-        // 操作列 - 简化设计
+        // 问题2彻底修复：创建更大的操作按钮确保完整显示
         QWidget *operationWidget = new QWidget();
+        operationWidget->setMinimumHeight(40);  // 设置最小高度
         QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
-        operationLayout->setContentsMargins(5, 5, 5, 5);
-        operationLayout->setSpacing(8);
+        operationLayout->setContentsMargins(10, 5, 10, 5);  // 增加边距
+        operationLayout->setSpacing(12);  // 增加按钮间距
         
         QPushButton *editBtn = new QPushButton("修改", operationWidget);
         QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
         
-        // 简化样式 - 按钮改小
-        editBtn->setStyleSheet(R"(
+        // 问题2彻底修复：使用更大的按钮尺寸
+        QString buttonStyle = R"(
             QPushButton {
-                background-color: #4A90E2;
+                background-color: %1;
                 color: white;
                 border: none;
-                border-radius: 3px;
-                font-size: 12px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0px;
             }
             QPushButton:hover {
-                background-color: #357ABD;
+                background-color: %2;
             }
-        )");
+        )";
         
-        deleteBtn->setStyleSheet(R"(
-            QPushButton {
-                background-color: #E74C3C;
-                color: white;
-                border: none;
-                border-radius: 3px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #C0392B;
-            }
-        )");
+        editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
+        deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
         
-        // 改小按钮尺寸
-        editBtn->setFixedSize(50, 24);
-        deleteBtn->setFixedSize(50, 24);
+        // 问题2彻底修复：大幅增加按钮尺寸确保文字完整显示
+        editBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
+        deleteBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
         
         connect(editBtn, &QPushButton::clicked, [this, row]() { onEditProject(row); });
         connect(deleteBtn, &QPushButton::clicked, [this, row]() { onDeleteProject(row); });
@@ -614,12 +609,6 @@ void ProjectManagementWindow::loadProjectData()
     // 加载新闻数据
     newsTable->setRowCount(4);
     
-    // 设置列宽:新闻内容占更多空间,操作栏合适宽度
-    newsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    newsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    newsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-    newsTable->setColumnWidth(2, 160);  // 增加操作列宽度到160px
-    
     QStringList news[] = {
         {"北京地铁在建线路11条线（段）盾构法施工区间占比68%", "2024-12-3 9:50:46"},
         {"甘肃天陇铁路柳林隧道正洞掘进破万米大关", "2024-12-3 9:50:51"},
@@ -638,45 +627,38 @@ void ProjectManagementWindow::loadProjectData()
             newsTable->setItem(row, col, item);
         }
         
-        // 操作列 - 简化设计
+        // 问题2彻底修复：创建更大的操作按钮确保完整显示
         QWidget *operationWidget = new QWidget();
+        operationWidget->setMinimumHeight(40);  // 设置最小高度
         QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
-        operationLayout->setContentsMargins(5, 5, 5, 5);
-        operationLayout->setSpacing(8);
+        operationLayout->setContentsMargins(10, 5, 10, 5);  // 增加边距
+        operationLayout->setSpacing(12);  // 增加按钮间距
         
         QPushButton *editBtn = new QPushButton("编辑", operationWidget);
         QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
         
-        // 简化样式 - 按钮改小
-        editBtn->setStyleSheet(R"(
+        // 问题2彻底修复：使用更大的按钮尺寸
+        QString buttonStyle = R"(
             QPushButton {
-                background-color: #4A90E2;
+                background-color: %1;
                 color: white;
                 border: none;
-                border-radius: 3px;
-                font-size: 12px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0px;
             }
             QPushButton:hover {
-                background-color: #357ABD;
+                background-color: %2;
             }
-        )");
+        )";
         
-        deleteBtn->setStyleSheet(R"(
-            QPushButton {
-                background-color: #E74C3C;
-                color: white;
-                border: none;
-                border-radius: 3px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #C0392B;
-            }
-        )");
+        editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
+        deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
         
-        // 改小按钮尺寸
-        editBtn->setFixedSize(50, 24);
-        deleteBtn->setFixedSize(50, 24);
+        // 问题2彻底修复：大幅增加按钮尺寸确保文字完整显示
+        editBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
+        deleteBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
         
         operationLayout->addWidget(editBtn);
         operationLayout->addWidget(deleteBtn);

@@ -75,8 +75,10 @@ void DashboardWindow::setupUI()
     createStatisticsPanel();
     rightLayout->addWidget(statisticsPanel);
 
+    // 恢复联系人面板（只在选中具体项目时显示）
     createContactPanel();
     rightLayout->addWidget(contactPanel);
+    contactPanel->hide();  // 默认隐藏，点击具体项目时显示
 
     rightLayout->addStretch();
 
@@ -401,11 +403,11 @@ void DashboardWindow::onProjectListItemClicked(QListWidgetItem *item)
 
     if (text.startsWith("📋")) {
         showAllProjects();
-        contactPanel->hide();
+        contactPanel->hide();  // 全部项目时隐藏联系人
     } else {
         QString projectName = text.mid(2);
         showSingleProject(projectName);
-        contactPanel->show();
+        contactPanel->show();  // 具体项目时显示联系人
     }
 }
 

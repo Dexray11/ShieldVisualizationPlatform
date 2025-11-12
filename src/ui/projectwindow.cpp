@@ -256,30 +256,48 @@ void ProjectWindow::loadMapView()
     // 定位输入区域
     QWidget *locationWidget = new QWidget(mainContent);
     QHBoxLayout *locationLayout = new QHBoxLayout(locationWidget);
+    locationLayout->setSpacing(10);
     
+    // 修复问题2：使用location.png图标，并统一高度为36px
     // 坐标输入
-    QLabel *coordLabel = new QLabel("📍", locationWidget);
-    coordLabel->setStyleSheet("font-size: 20px;");
+    QLabel *coordLabel = new QLabel(locationWidget);
+    coordLabel->setPixmap(QPixmap(":/icons/location.png").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    coordLabel->setFixedSize(24, 36);  // 统一高度36px
+    coordLabel->setAlignment(Qt::AlignCenter);
+    
     coordsInput = new QLineEdit("120.36,36.23", locationWidget);
     coordsInput->setPlaceholderText("输入坐标");
+    coordsInput->setFixedHeight(36);  // 修复问题2：统一高度36px
     coordsInput->setStyleSheet(StyleHelper::getInputStyle());
     coordsInput->setMaximumWidth(200);
     
-    QPushButton *coordLocateBtn = new QPushButton("🎯", locationWidget);
-    coordLocateBtn->setFixedSize(40, 40);
+    // 修复问题2：使用lock.png图标作为定位按钮图标
+    QPushButton *coordLocateBtn = new QPushButton(locationWidget);
+    coordLocateBtn->setIcon(QIcon(":/icons/lock.png"));
+    coordLocateBtn->setIconSize(QSize(16, 16));
+    coordLocateBtn->setFixedSize(36, 36);  // 修复问题2：统一高度36px
     coordLocateBtn->setStyleSheet(StyleHelper::getButtonStyle());
     coordLocateBtn->setToolTip("定位到坐标");
     
     // 桩号输入
-    QLabel *stakeLabel = new QLabel("🚩", locationWidget);
-    stakeLabel->setStyleSheet("font-size: 20px; margin-left: 20px;");
+    // 修复问题2：使用flag.png图标
+    QLabel *stakeLabel = new QLabel(locationWidget);
+    stakeLabel->setPixmap(QPixmap(":/icons/flag.png").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    stakeLabel->setFixedSize(24, 36);  // 统一高度36px
+    stakeLabel->setAlignment(Qt::AlignCenter);
+    stakeLabel->setStyleSheet("margin-left: 10px;");
+    
     stakeInput = new QLineEdit("K1+190.00", locationWidget);
     stakeInput->setPlaceholderText("输入桩号");
+    stakeInput->setFixedHeight(36);  // 修复问题2：统一高度36px
     stakeInput->setStyleSheet(StyleHelper::getInputStyle());
     stakeInput->setMaximumWidth(200);
     
-    QPushButton *stakeLocateBtn = new QPushButton("🎯", locationWidget);
-    stakeLocateBtn->setFixedSize(40, 40);
+    // 修复问题2：使用lock.png图标作为定位按钮图标
+    QPushButton *stakeLocateBtn = new QPushButton(locationWidget);
+    stakeLocateBtn->setIcon(QIcon(":/icons/lock.png"));
+    stakeLocateBtn->setIconSize(QSize(16, 16));
+    stakeLocateBtn->setFixedSize(36, 36);  // 修复问题2：统一高度36px
     stakeLocateBtn->setStyleSheet(StyleHelper::getButtonStyle());
     stakeLocateBtn->setToolTip("定位到桩号");
     

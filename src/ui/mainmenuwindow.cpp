@@ -187,6 +187,7 @@ void MainMenuWindow::createMenuButtons()
 
 void MainMenuWindow::onOpenProjectClicked()
 {
+    // 修复问题1：打开项目后直接展示全部项目界面（左侧边栏）
     DashboardWindow *dashboard = new DashboardWindow();
     dashboard->show();
     this->hide();
