@@ -5,6 +5,9 @@ debug/dashboardwindow.o
 debug/projectwindow.o
 debug/projectmanagementwindow.o
 debug/stylehelper.o
+debug/DatabaseManager.o
+debug/UserDAO.o
+debug/User.o
 debug/qrc_resources.o
 debug/moc_loginwindow.o
 debug/moc_mainmenuwindow.o

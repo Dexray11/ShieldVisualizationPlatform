@@ -10,6 +10,9 @@
 #include <QTimer>
 #include <QPropertyAnimation>
 
+// 前向声明
+class User;
+
 class LoginWindow : public QMainWindow
 {
     Q_OBJECT
@@ -27,6 +30,7 @@ private:
     void setupWelcomeScreen();
     void setupLoginScreen();
     void createConnections();
+    void initDatabase();  // 初始化数据库
     
     // 欢迎界面
     QWidget *welcomeWidget;
@@ -47,6 +51,9 @@ private:
     // 计时器和动画
     QTimer *welcomeTimer;
     QPropertyAnimation *fadeAnimation;
+    
+    // 当前登录用户
+    User *currentUser;
 };
 
 #endif // LOGINWINDOW_H

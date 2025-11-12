@@ -14,7 +14,10 @@ SOURCES += \
     src/ui/dashboardwindow.cpp \
     src/ui/projectwindow.cpp \
     src/ui/projectmanagementwindow.cpp \
-    src/utils/stylehelper.cpp
+    src/utils/stylehelper.cpp \
+    src/database/DatabaseManager.cpp \
+    src/database/UserDAO.cpp \
+    src/models/User.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -22,7 +25,10 @@ HEADERS += \
     src/ui/dashboardwindow.h \
     src/ui/projectwindow.h \
     src/ui/projectmanagementwindow.h \
-    src/utils/stylehelper.h
+    src/utils/stylehelper.h \
+    src/database/DatabaseManager.h \
+    src/database/UserDAO.h \
+    src/models/User.h
 
 RESOURCES += \
     resources/resources.qrc
@@ -41,3 +47,6 @@ win32 {
     QMAKE_TARGET_DESCRIPTION = "Intelligent Shield Construction Geological Visualization Platform"
     QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2024"
 }
+
+DISTFILES += \
+    resources/images/welcome_bg.jpg

@@ -1,23 +1,38 @@
 #include "loginwindow.h"
 #include "mainmenuwindow.h"
 #include "../utils/stylehelper.h"
+#include "../database/DatabaseManager.h"
+#include "../database/UserDAO.h"
+#include "../models/User.h"
 #include <QGraphicsOpacityEffect>
 #include <QMessageBox>
 #include <QApplication>
 #include <QScreen>
+#include <QDebug>
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
     , welcomeWidget(nullptr)
     , loginWidget(nullptr)
     , welcomeTimer(nullptr)
+    , currentUser(nullptr)
 {
+    qDebug() << "LoginWindow: 开始构造函数";
+    
+    // 初始化数据库
+    initDatabase();
+    qDebug() << "LoginWindow: 数据库初始化完成";
+    
     setupUI();
+    qDebug() << "LoginWindow: UI设置完成";
+    
     createConnections();
+    qDebug() << "LoginWindow: 信号槽连接完成";
     
     // 设置窗口属性
     setWindowTitle("智能盾构地质可视化平台");
     setFixedSize(1200, 800);
+    qDebug() << "LoginWindow: 窗口属性设置完成";
     
     // 窗口居中显示
     QScreen *screen = QApplication::primaryScreen();
@@ -25,20 +40,28 @@ LoginWindow::LoginWindow(QWidget *parent)
     int x = (screenGeometry.width() - width()) / 2;
     int y = (screenGeometry.height() - height()) / 2;
     move(x, y);
+    qDebug() << "LoginWindow: 窗口位置设置完成";
     
     // 先显示欢迎界面
     welcomeWidget->show();
     loginWidget->hide();
+    qDebug() << "LoginWindow: 欢迎界面已显示";
     
     // 2-3秒后切换到登录界面
     welcomeTimer = new QTimer(this);
     welcomeTimer->setSingleShot(true);
     connect(welcomeTimer, &QTimer::timeout, this, &LoginWindow::showMainMenu);
     welcomeTimer->start(2500);  // 2.5秒
+    
+    qDebug() << "LoginWindow: 构造函数完成，准备显示窗口";
 }
 
 LoginWindow::~LoginWindow()
 {
+    if (currentUser) {
+        delete currentUser;
+        currentUser = nullptr;
+    }
 }
 
 void LoginWindow::setupUI()
@@ -67,10 +90,23 @@ void LoginWindow::setupWelcomeScreen()
     QVBoxLayout *layout = new QVBoxLayout(welcomeWidget);
     layout->setAlignment(Qt::AlignCenter);
     
-    // 欢迎图片（需要提供大学校园图片）
+    // 欢迎图片（如果存在）
     welcomeImage = new QLabel(welcomeWidget);
-    welcomeImage->setPixmap(QPixmap(":/images/welcome_bg.jpg").scaled(800, 450, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    welcomeImage->setAlignment(Qt::AlignCenter);
+    QPixmap welcomePixmap(":/images/welcome_bg.jpg");
+    if (!welcomePixmap.isNull()) {
+        // 图片存在，显示图片
+        welcomeImage->setPixmap(welcomePixmap.scaled(800, 450, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        welcomeImage->setAlignment(Qt::AlignCenter);
+        layout->addWidget(welcomeImage);
+        qDebug() << "欢迎图片加载成功";
+    } else {
+        // 图片不存在，用大学Logo文字代替
+        welcomeImage->setStyleSheet("font-size: 48px; font-weight: bold; color: white; margin: 50px;");
+        welcomeImage->setText("🎓");
+        welcomeImage->setAlignment(Qt::AlignCenter);
+        layout->addWidget(welcomeImage);
+        qDebug() << "欢迎图片不存在，使用文字替代";
+    }
     
     // 标题
     welcomeTitle = new QLabel("欢迎使用智能盾构地质可视化平台", welcomeWidget);
@@ -82,7 +118,6 @@ void LoginWindow::setupWelcomeScreen()
     welcomeSubtitle->setStyleSheet(QString("color: %1; font-size: 18px; margin-top: 10px;").arg(StyleHelper::COLOR_LIGHT));
     welcomeSubtitle->setAlignment(Qt::AlignCenter);
     
-    layout->addWidget(welcomeImage);
     layout->addWidget(welcomeTitle);
     layout->addWidget(welcomeSubtitle);
     layout->addStretch();
@@ -264,7 +299,7 @@ void LoginWindow::createConnections()
 
 void LoginWindow::onLoginClicked()
 {
-    QString username = usernameEdit->text();
+    QString username = usernameEdit->text().trimmed();
     QString password = passwordEdit->text();
 
     if (username.isEmpty() || password.isEmpty()) {
@@ -272,7 +307,28 @@ void LoginWindow::onLoginClicked()
         return;
     }
 
-    // 跳转到主菜单
+    // 使用数据库验证用户
+    UserDAO userDAO;
+    if (!userDAO.validateUser(username, password)) {
+        QMessageBox::warning(this, "登录失败", 
+            "用户名或密码错误！\n错误信息：" + userDAO.getLastError());
+        // 清空密码框
+        passwordEdit->clear();
+        passwordEdit->setFocus();
+        return;
+    }
+
+    // 获取用户信息
+    currentUser = userDAO.getUserByUsername(username);
+    if (!currentUser) {
+        QMessageBox::critical(this, "系统错误", "获取用户信息失败！");
+        return;
+    }
+
+    qDebug() << "用户登录成功:" << currentUser->getUsername() 
+             << "角色:" << currentUser->getRole();
+
+    // 登录成功，跳转到主菜单
     MainMenuWindow *mainMenu = new MainMenuWindow();
     mainMenu->show();
     this->close();
@@ -305,4 +361,18 @@ void LoginWindow::showMainMenu()
     });
     
     fadeAnimation->start(QPropertyAnimation::DeleteWhenStopped);
+}
+
+void LoginWindow::initDatabase()
+{
+    qDebug() << "正在初始化数据库...";
+    
+    if (!DatabaseManager::instance().initDatabase()) {
+        QString error = DatabaseManager::instance().getLastError();
+        QMessageBox::critical(this, "数据库初始化失败", 
+            "无法初始化数据库，系统将无法正常运行！\n\n错误信息：" + error);
+        qCritical() << "数据库初始化失败:" << error;
+    } else {
+        qDebug() << "数据库初始化成功";
+    }
 }

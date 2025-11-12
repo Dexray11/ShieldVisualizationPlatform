@@ -13,5 +13,6 @@
         <file>icons/app_icon.ico</file>
         <file>icons/flag.png</file>
         <file>icons/lock.png</file>
+        <file>images/welcome_bg.jpg</file>
     </qresource>
 </RCC>

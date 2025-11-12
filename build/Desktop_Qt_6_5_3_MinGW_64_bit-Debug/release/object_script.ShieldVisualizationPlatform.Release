@@ -5,6 +5,9 @@ release/dashboardwindow.o
 release/projectwindow.o
 release/projectmanagementwindow.o
 release/stylehelper.o
+release/DatabaseManager.o
+release/UserDAO.o
+release/User.o
 release/qrc_resources.o
 release/moc_loginwindow.o
 release/moc_mainmenuwindow.o

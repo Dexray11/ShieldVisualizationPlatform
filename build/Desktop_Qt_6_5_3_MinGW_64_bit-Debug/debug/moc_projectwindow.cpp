@@ -40,8 +40,10 @@ namespace {
 struct qt_meta_stringdata_CLASSProjectWindowENDCLASS_t {};
 static constexpr auto qt_meta_stringdata_CLASSProjectWindowENDCLASS = QtMocHelpers::stringData(
     "ProjectWindow",
-    "onBackClicked",
+    "backToDashboard",
     "",
+    "onBackClicked",
+    "onMapViewClicked",
     "on2DViewClicked",
     "on3DViewClicked",
     "onExcavationParamsClicked",
@@ -50,32 +52,38 @@ static constexpr auto qt_meta_stringdata_CLASSProjectWindowENDCLASS = QtMocHelpe
 );
 #else  // !QT_MOC_HAS_STRING_DATA
 struct qt_meta_stringdata_CLASSProjectWindowENDCLASS_t {
-    uint offsetsAndSizes[16];
+    uint offsetsAndSizes[20];
     char stringdata0[14];
-    char stringdata1[14];
+    char stringdata1[16];
     char stringdata2[1];
-    char stringdata3[16];
-    char stringdata4[16];
-    char stringdata5[26];
-    char stringdata6[27];
-    char stringdata7[21];
+    char stringdata3[14];
+    char stringdata4[17];
+    char stringdata5[16];
+    char stringdata6[16];
+    char stringdata7[26];
+    char stringdata8[27];
+    char stringdata9[21];
 };
 #define QT_MOC_LITERAL(ofs, len) \
     uint(sizeof(qt_meta_stringdata_CLASSProjectWindowENDCLASS_t::offsetsAndSizes) + ofs), len 
 Q_CONSTINIT static const qt_meta_stringdata_CLASSProjectWindowENDCLASS_t qt_meta_stringdata_CLASSProjectWindowENDCLASS = {
     {
         QT_MOC_LITERAL(0, 13),  // "ProjectWindow"
-        QT_MOC_LITERAL(14, 13),  // "onBackClicked"
-        QT_MOC_LITERAL(28, 0),  // ""
-        QT_MOC_LITERAL(29, 15),  // "on2DViewClicked"
-        QT_MOC_LITERAL(45, 15),  // "on3DViewClicked"
-        QT_MOC_LITERAL(61, 25),  // "onExcavationParamsClicked"
-        QT_MOC_LITERAL(87, 26),  // "onSupplementaryDataClicked"
-        QT_MOC_LITERAL(114, 20)   // "onPositioningClicked"
+        QT_MOC_LITERAL(14, 15),  // "backToDashboard"
+        QT_MOC_LITERAL(30, 0),  // ""
+        QT_MOC_LITERAL(31, 13),  // "onBackClicked"
+        QT_MOC_LITERAL(45, 16),  // "onMapViewClicked"
+        QT_MOC_LITERAL(62, 15),  // "on2DViewClicked"
+        QT_MOC_LITERAL(78, 15),  // "on3DViewClicked"
+        QT_MOC_LITERAL(94, 25),  // "onExcavationParamsClicked"
+        QT_MOC_LITERAL(120, 26),  // "onSupplementaryDataClicked"
+        QT_MOC_LITERAL(147, 20)   // "onPositioningClicked"
     },
     "ProjectWindow",
-    "onBackClicked",
+    "backToDashboard",
     "",
+    "onBackClicked",
+    "onMapViewClicked",
     "on2DViewClicked",
     "on3DViewClicked",
     "onExcavationParamsClicked",
@@ -92,22 +100,30 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSProjectWindowENDCLASS[] = {
       11,       // revision
        0,       // classname
        0,    0, // classinfo
-       6,   14, // methods
+       8,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
-       0,       // signalCount
+       1,       // signalCount
+
+ // signals: name, argc, parameters, tag, flags, initial metatype offsets
+       1,    0,   62,    2, 0x06,    1 /* Public */,
 
  // slots: name, argc, parameters, tag, flags, initial metatype offsets
-       1,    0,   50,    2, 0x08,    1 /* Private */,
-       3,    0,   51,    2, 0x08,    2 /* Private */,
-       4,    0,   52,    2, 0x08,    3 /* Private */,
-       5,    0,   53,    2, 0x08,    4 /* Private */,
-       6,    0,   54,    2, 0x08,    5 /* Private */,
-       7,    0,   55,    2, 0x08,    6 /* Private */,
+       3,    0,   63,    2, 0x08,    2 /* Private */,
+       4,    0,   64,    2, 0x08,    3 /* Private */,
+       5,    0,   65,    2, 0x08,    4 /* Private */,
+       6,    0,   66,    2, 0x08,    5 /* Private */,
+       7,    0,   67,    2, 0x08,    6 /* Private */,
+       8,    0,   68,    2, 0x08,    7 /* Private */,
+       9,    0,   69,    2, 0x08,    8 /* Private */,
+
+ // signals: parameters
+    QMetaType::Void,
 
  // slots: parameters
+    QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
@@ -127,7 +143,11 @@ Q_CONSTINIT const QMetaObject ProjectWindow::staticMetaObject = { {
     qt_incomplete_metaTypeArray<qt_meta_stringdata_CLASSProjectWindowENDCLASS_t,
         // Q_OBJECT / Q_GADGET
         QtPrivate::TypeAndForceComplete<ProjectWindow, std::true_type>,
+        // method 'backToDashboard'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
         // method 'onBackClicked'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'onMapViewClicked'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
         // method 'on2DViewClicked'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
@@ -149,13 +169,24 @@ void ProjectWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _i
         auto *_t = static_cast<ProjectWindow *>(_o);
         (void)_t;
         switch (_id) {
-        case 0: _t->onBackClicked(); break;
-        case 1: _t->on2DViewClicked(); break;
-        case 2: _t->on3DViewClicked(); break;
-        case 3: _t->onExcavationParamsClicked(); break;
-        case 4: _t->onSupplementaryDataClicked(); break;
-        case 5: _t->onPositioningClicked(); break;
+        case 0: _t->backToDashboard(); break;
+        case 1: _t->onBackClicked(); break;
+        case 2: _t->onMapViewClicked(); break;
+        case 3: _t->on2DViewClicked(); break;
+        case 4: _t->on3DViewClicked(); break;
+        case 5: _t->onExcavationParamsClicked(); break;
+        case 6: _t->onSupplementaryDataClicked(); break;
+        case 7: _t->onPositioningClicked(); break;
         default: ;
+        }
+    } else if (_c == QMetaObject::IndexOfMethod) {
+        int *result = reinterpret_cast<int *>(_a[0]);
+        {
+            using _t = void (ProjectWindow::*)();
+            if (_t _q_method = &ProjectWindow::backToDashboard; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
+                *result = 0;
+                return;
+            }
         }
     }
     (void)_a;
@@ -180,14 +211,20 @@ int ProjectWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 6)
+        if (_id < 8)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 6;
+        _id -= 8;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 6)
+        if (_id < 8)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 6;
+        _id -= 8;
     }
     return _id;
+}
+
+// SIGNAL 0
+void ProjectWindow::backToDashboard()
+{
+    QMetaObject::activate(this, &staticMetaObject, 0, nullptr);
 }
 QT_WARNING_POP
