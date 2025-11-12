@@ -451,3 +451,61 @@ QString StyleHelper::getTabWidgetStyle()
     )").arg(COLOR_BORDER).arg(COLOR_TEXT_DARK).arg(COLOR_SECONDARY).arg(COLOR_LIGHT);
 }
 
+QString StyleHelper::getMessageBoxStyle()
+{
+    return QString(R"(
+        QMessageBox {
+            background-color: white;
+        }
+        QMessageBox QLabel {
+            color: #333333;
+            font-size: 14px;
+            min-width: 300px;
+        }
+        QMessageBox QPushButton {
+            background-color: %1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 20px;
+            min-width: 80px;
+        }
+        QMessageBox QPushButton:hover {
+            background-color: %2;
+        }
+    )").arg(COLOR_SECONDARY).arg(COLOR_ACCENT);
+}
+
+void StyleHelper::showInformation(QWidget *parent, const QString &title, const QString &message)
+{
+    QMessageBox msgBox(parent);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setStyleSheet(getMessageBoxStyle());
+    msgBox.exec();
+}
+
+void StyleHelper::showWarning(QWidget *parent, const QString &title, const QString &message)
+{
+    QMessageBox msgBox(parent);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setStyleSheet(getMessageBoxStyle());
+    msgBox.exec();
+}
+
+void StyleHelper::showError(QWidget *parent, const QString &title, const QString &message)
+{
+    QMessageBox msgBox(parent);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(QMessageBox::Critical);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setStyleSheet(getMessageBoxStyle());
+    msgBox.exec();
+}
+

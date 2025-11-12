@@ -1,6 +1,10 @@
 #include "projectmanagementwindow.h"
 #include "mainmenuwindow.h"
 #include "../utils/stylehelper.h"
+#include "../database/ProjectDAO.h"
+#include "../database/WarningDAO.h"
+#include "../models/Project.h"
+#include "../models/Warning.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -13,6 +17,8 @@
 #include <QFileDialog>
 #include <QApplication>
 #include <QScreen>
+#include <QSqlQuery>
+#include <QSqlError>
 
 ProjectManagementWindow::ProjectManagementWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -530,34 +536,43 @@ void ProjectManagementWindow::createNewsModuleTab()
 
 void ProjectManagementWindow::loadProjectData()
 {
-    // 加载项目总览数据
-    projectTable->setRowCount(4);
+    // 创建DAO对象
+    ProjectDAO projectDAO;
+    WarningDAO warningDAO;
     
-    QStringList projects[] = {
-        {"济南环城高速", "测试简介", "测试坐标", "测试单位", "2024-11-28", "91%", "山东济南"},
-        {"老虎山隧道", "测试简介", "测试坐标", "测试单位", "2024-11-28", "66.7%", "山东青岛"},
-        {"青岛沿海公路", "测试简介", "测试坐标", "测试单位", "2024-11-28", "56%", "山东青岛"},
-        {"演示项目", "测试简介", "测试坐标", "测试单位", "2024-11-28", "80%", "山东青岛"}
-    };
+    // ========== 加载项目总览数据 ==========
+    QList<Project> projects = projectDAO.getProjectsByStatus("active");
+    projectTable->setRowCount(projects.size());
     
-    for (int row = 0; row < 4; row++) {
+    for (int row = 0; row < projects.size(); row++) {
+        const Project &project = projects[row];
+        
+        // 填充项目数据
+        projectTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+        projectTable->setItem(row, 1, new QTableWidgetItem(project.getBrief()));
+        // 组合经纬度坐标
+        QString coordinates = QString("%1,%2").arg(project.getLatitude()).arg(project.getLongitude());
+        projectTable->setItem(row, 2, new QTableWidgetItem(coordinates));
+        projectTable->setItem(row, 3, new QTableWidgetItem(project.getConstructionUnit()));
+        projectTable->setItem(row, 4, new QTableWidgetItem(project.getStartDate()));
+        projectTable->setItem(row, 5, new QTableWidgetItem(QString("%1%").arg(QString::number(project.getProgress(), 'f', 1))));
+        projectTable->setItem(row, 6, new QTableWidgetItem(project.getLocation()));
+        
+        // 设置居中对齐
         for (int col = 0; col < 7; col++) {
-            QTableWidgetItem *item = new QTableWidgetItem(projects[row][col]);
-            item->setTextAlignment(Qt::AlignCenter);
-            projectTable->setItem(row, col, item);
+            projectTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
         }
         
-        // 问题2彻底修复：创建更大的操作按钮确保完整显示
+        // 创建操作按钮
         QWidget *operationWidget = new QWidget();
-        operationWidget->setMinimumHeight(40);  // 设置最小高度
+        operationWidget->setMinimumHeight(40);
         QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
-        operationLayout->setContentsMargins(10, 5, 10, 5);  // 增加边距
-        operationLayout->setSpacing(12);  // 增加按钮间距
+        operationLayout->setContentsMargins(10, 5, 10, 5);
+        operationLayout->setSpacing(12);
         
         QPushButton *editBtn = new QPushButton("修改", operationWidget);
         QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
         
-        // 问题2彻底修复：使用更大的按钮尺寸
         QString buttonStyle = R"(
             QPushButton {
                 background-color: %1;
@@ -576,9 +591,8 @@ void ProjectManagementWindow::loadProjectData()
         editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
         deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
         
-        // 问题2彻底修复：大幅增加按钮尺寸确保文字完整显示
-        editBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
-        deleteBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
+        editBtn->setFixedSize(70, 32);
+        deleteBtn->setFixedSize(70, 32);
         
         connect(editBtn, &QPushButton::clicked, [this, row]() { onEditProject(row); });
         connect(deleteBtn, &QPushButton::clicked, [this, row]() { onDeleteProject(row); });
@@ -589,81 +603,100 @@ void ProjectManagementWindow::loadProjectData()
         projectTable->setCellWidget(row, 7, operationWidget);
     }
     
-    // 加载预警信息数据（示例）
-    warningTable->setRowCount(4);
-    QStringList warnings[] = {
-        {"青岛沿海公路", "1", "D", "岩溶发育", "演示坐标", "演示深度", "1", "2024-12-3 9:50:46"},
-        {"青岛沿海公路", "2", "D", "涌水涌泥", "演示坐标", "演示深度", "1", "2024-12-3 9:50:51"},
-        {"青岛沿海公路", "3", "D", "岩层断裂", "演示坐标", "演示深度", "1", "2024-12-3 9:50:56"},
-        {"青岛沿海公路", "4", "D", "瓦斯区域", "演示坐标", "演示深度", "1", "2024-12-3 9:50:01"}
-    };
+    // ========== 加载预警信息数据 ==========
+    QList<Warning> warnings = warningDAO.getAllWarnings();
+    warningTable->setRowCount(warnings.size());
     
-    for (int row = 0; row < 4; row++) {
+    for (int row = 0; row < warnings.size(); row++) {
+        const Warning &warning = warnings[row];
+        
+        // 根据项目ID获取项目名称
+        Project project = projectDAO.getProjectById(warning.getProjectId());
+        QString projectName = project.isValid() ? project.getProjectName() : "未知项目";
+        
+        warningTable->setItem(row, 0, new QTableWidgetItem(projectName));
+        warningTable->setItem(row, 1, new QTableWidgetItem(QString::number(warning.getWarningId())));
+        warningTable->setItem(row, 2, new QTableWidgetItem(warning.getWarningLevel()));
+        warningTable->setItem(row, 3, new QTableWidgetItem(warning.getWarningType()));
+        // 组合经纬度坐标
+        QString warningCoordinates = QString("%1,%2").arg(warning.getLatitude()).arg(warning.getLongitude());
+        warningTable->setItem(row, 4, new QTableWidgetItem(warningCoordinates));
+        // 深度
+        warningTable->setItem(row, 5, new QTableWidgetItem(QString::number(warning.getDepth())));
+        // 阈值
+        warningTable->setItem(row, 6, new QTableWidgetItem(QString::number(warning.getThresholdValue())));
+        // 时间 - 将QDateTime转换为QString
+        warningTable->setItem(row, 7, new QTableWidgetItem(warning.getWarningTime().toString("yyyy-MM-dd hh:mm:ss")));
+        
         for (int col = 0; col < 8; col++) {
-            QTableWidgetItem *item = new QTableWidgetItem(warnings[row][col]);
-            item->setTextAlignment(Qt::AlignCenter);
-            warningTable->setItem(row, col, item);
+            warningTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
         }
     }
     
-    // 加载新闻数据
-    newsTable->setRowCount(4);
+    // ========== 加载掘进信息数据（暂时清空，等待数据） ==========
+    excavationTable->setRowCount(0);
     
-    QStringList news[] = {
-        {"北京地铁在建线路11条线（段）盾构法施工区间占比68%", "2024-12-3 9:50:46"},
-        {"甘肃天陇铁路柳林隧道正洞掘进破万米大关", "2024-12-3 9:50:51"},
-        {"宜兴高铁长岗岭隧道顺利贯通", "2024-12-3 9:50:56"},
-        {"云兰高速全线12座隧道贯通", "2024-12-3 9:50:01"}
-    };
+    // ========== 加载补勘数据（暂时清空，等待数据） ==========
+    supplementaryTable->setRowCount(0);
     
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 2; col++) {
-            QTableWidgetItem *item = new QTableWidgetItem(news[row][col]);
-            if (col == 0) {
-                item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            } else {
-                item->setTextAlignment(Qt::AlignCenter);
-            }
-            newsTable->setItem(row, col, item);
+    // ========== 加载新闻数据 ==========
+    // 从数据库news表中读取新闻
+    QSqlQuery query;
+    query.prepare("SELECT content, publish_time FROM news ORDER BY publish_time DESC");
+    
+    if (query.exec()) {
+        QList<QPair<QString, QString>> newsList;
+        while (query.next()) {
+            QString content = query.value(0).toString();
+            QString publishTime = query.value(1).toString();
+            newsList.append(qMakePair(content, publishTime));
         }
         
-        // 问题2彻底修复：创建更大的操作按钮确保完整显示
-        QWidget *operationWidget = new QWidget();
-        operationWidget->setMinimumHeight(40);  // 设置最小高度
-        QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
-        operationLayout->setContentsMargins(10, 5, 10, 5);  // 增加边距
-        operationLayout->setSpacing(12);  // 增加按钮间距
+        newsTable->setRowCount(newsList.size());
         
-        QPushButton *editBtn = new QPushButton("编辑", operationWidget);
-        QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
-        
-        // 问题2彻底修复：使用更大的按钮尺寸
-        QString buttonStyle = R"(
-            QPushButton {
-                background-color: %1;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 13px;
-                font-weight: bold;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: %2;
-            }
-        )";
-        
-        editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
-        deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
-        
-        // 问题2彻底修复：大幅增加按钮尺寸确保文字完整显示
-        editBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
-        deleteBtn->setFixedSize(70, 32);  // 从60x28增加到70x32
-        
-        operationLayout->addWidget(editBtn);
-        operationLayout->addWidget(deleteBtn);
-        
-        newsTable->setCellWidget(row, 2, operationWidget);
+        for (int row = 0; row < newsList.size(); row++) {
+            newsTable->setItem(row, 0, new QTableWidgetItem(newsList[row].first));
+            newsTable->setItem(row, 1, new QTableWidgetItem(newsList[row].second));
+            
+            newsTable->item(row, 0)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            newsTable->item(row, 1)->setTextAlignment(Qt::AlignCenter);
+            
+            // 创建操作按钮
+            QWidget *operationWidget = new QWidget();
+            operationWidget->setMinimumHeight(40);
+            QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
+            operationLayout->setContentsMargins(10, 5, 10, 5);
+            operationLayout->setSpacing(12);
+            
+            QPushButton *editBtn = new QPushButton("编辑", operationWidget);
+            QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
+            
+            QString buttonStyle = R"(
+                QPushButton {
+                    background-color: %1;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    padding: 0px;
+                }
+                QPushButton:hover {
+                    background-color: %2;
+                }
+            )";
+            
+            editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
+            deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
+            
+            editBtn->setFixedSize(70, 32);
+            deleteBtn->setFixedSize(70, 32);
+            
+            operationLayout->addWidget(editBtn);
+            operationLayout->addWidget(deleteBtn);
+            
+            newsTable->setCellWidget(row, 2, operationWidget);
+        }
     }
 }
 
@@ -802,5 +835,6 @@ void ProjectManagementWindow::onDeleteProject(int row)
 
 void ProjectManagementWindow::onTabChanged(int index)
 {
+    Q_UNUSED(index);
     // 可以在这里处理标签页切换事件
 }

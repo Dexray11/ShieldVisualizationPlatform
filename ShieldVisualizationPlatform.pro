@@ -17,7 +17,11 @@ SOURCES += \
     src/utils/stylehelper.cpp \
     src/database/DatabaseManager.cpp \
     src/database/UserDAO.cpp \
-    src/models/User.cpp
+    src/database/ProjectDAO.cpp \
+    src/database/WarningDAO.cpp \
+    src/models/User.cpp \
+    src/models/Project.cpp \
+    src/models/Warning.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -28,7 +32,11 @@ HEADERS += \
     src/utils/stylehelper.h \
     src/database/DatabaseManager.h \
     src/database/UserDAO.h \
-    src/models/User.h
+    src/database/ProjectDAO.h \
+    src/database/WarningDAO.h \
+    src/models/User.h \
+    src/models/Project.h \
+    src/models/Warning.h
 
 RESOURCES += \
     resources/resources.qrc

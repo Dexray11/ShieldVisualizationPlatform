@@ -92,7 +92,7 @@ void LoginWindow::setupWelcomeScreen()
     
     // 欢迎图片（如果存在）
     welcomeImage = new QLabel(welcomeWidget);
-    QPixmap welcomePixmap(":/images/welcome_bg.jpg");
+    QPixmap welcomePixmap(":/images/zhongjiaologo.png");
     if (!welcomePixmap.isNull()) {
         // 图片存在，显示图片
         welcomeImage->setPixmap(welcomePixmap.scaled(800, 450, Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -114,7 +114,7 @@ void LoginWindow::setupWelcomeScreen()
     welcomeTitle->setAlignment(Qt::AlignCenter);
     
     // 副标题
-    welcomeSubtitle = new QLabel("——本平台由山东科技大学开发", welcomeWidget);
+    welcomeSubtitle = new QLabel("——本平台由中交第一航务工程局有限公司开发", welcomeWidget);
     welcomeSubtitle->setStyleSheet(QString("color: %1; font-size: 18px; margin-top: 10px;").arg(StyleHelper::COLOR_LIGHT));
     welcomeSubtitle->setAlignment(Qt::AlignCenter);
     
@@ -303,14 +303,14 @@ void LoginWindow::onLoginClicked()
     QString password = passwordEdit->text();
 
     if (username.isEmpty() || password.isEmpty()) {
-        QMessageBox::warning(this, "登录失败", "用户名和密码不能为空！");
+        StyleHelper::showWarning(this, "登录失败", "用户名和密码不能为空！");
         return;
     }
 
     // 使用数据库验证用户
     UserDAO userDAO;
     if (!userDAO.validateUser(username, password)) {
-        QMessageBox::warning(this, "登录失败", 
+        StyleHelper::showWarning(this, "登录失败", 
             "用户名或密码错误！\n错误信息：" + userDAO.getLastError());
         // 清空密码框
         passwordEdit->clear();
@@ -321,7 +321,7 @@ void LoginWindow::onLoginClicked()
     // 获取用户信息
     currentUser = userDAO.getUserByUsername(username);
     if (!currentUser) {
-        QMessageBox::critical(this, "系统错误", "获取用户信息失败！");
+        StyleHelper::showError(this, "系统错误", "获取用户信息失败！");
         return;
     }
 
@@ -369,7 +369,7 @@ void LoginWindow::initDatabase()
     
     if (!DatabaseManager::instance().initDatabase()) {
         QString error = DatabaseManager::instance().getLastError();
-        QMessageBox::critical(this, "数据库初始化失败", 
+        StyleHelper::showError(this, "数据库初始化失败", 
             "无法初始化数据库，系统将无法正常运行！\n\n错误信息：" + error);
         qCritical() << "数据库初始化失败:" << error;
     } else {

@@ -4,6 +4,8 @@
 #include <QApplication>
 #include <QString>
 #include <QColor>
+#include <QWidget>
+#include <QMessageBox>
 
 class StyleHelper
 {
@@ -43,8 +45,14 @@ public:
     // 获取标签页样式
     static QString getTabWidgetStyle();
     
+    // MessageBox 辅助函数
+    static void showInformation(QWidget *parent, const QString &title, const QString &message);
+    static void showWarning(QWidget *parent, const QString &title, const QString &message);
+    static void showError(QWidget *parent, const QString &title, const QString &message);
+    
 private:
     StyleHelper() = delete;
+    static QString getMessageBoxStyle();
 };
 
 #endif // STYLEHELPER_H

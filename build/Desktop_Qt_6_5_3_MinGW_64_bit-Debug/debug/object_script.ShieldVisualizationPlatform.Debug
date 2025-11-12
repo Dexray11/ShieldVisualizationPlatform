@@ -7,7 +7,11 @@ debug/projectmanagementwindow.o
 debug/stylehelper.o
 debug/DatabaseManager.o
 debug/UserDAO.o
+debug/ProjectDAO.o
+debug/WarningDAO.o
 debug/User.o
+debug/Project.o
+debug/Warning.o
 debug/qrc_resources.o
 debug/moc_loginwindow.o
 debug/moc_mainmenuwindow.o

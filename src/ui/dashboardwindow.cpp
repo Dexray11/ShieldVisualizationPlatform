@@ -2,6 +2,9 @@
 #include "projectwindow.h"
 #include "mainmenuwindow.h"
 #include "../utils/stylehelper.h"
+#include "../database/ProjectDAO.h"
+#include "../database/WarningDAO.h"
+#include "../models/Project.h"
 #include <QApplication>
 #include <QScreen>
 #include <QHeaderView>
@@ -226,7 +229,13 @@ void DashboardWindow::createSidebar()
     QListWidgetItem *allProjectsItem = new QListWidgetItem("📋 全部项目");
     projectList->addItem(allProjectsItem);
 
-    projectList->addItem("📁 青岛沿海公路示例工程");
+    // 从数据库加载项目列表
+    ProjectDAO projectDAO;
+    QList<Project> projects = projectDAO.getProjectsByStatus("active");
+    
+    for (const Project &project : projects) {
+        projectList->addItem("📁 " + project.getProjectName());
+    }
 
     connect(projectList, &QListWidget::itemClicked,
             this, &DashboardWindow::onProjectListItemClicked);
@@ -405,7 +414,9 @@ void DashboardWindow::onProjectListItemClicked(QListWidgetItem *item)
         showAllProjects();
         contactPanel->hide();  // 全部项目时隐藏联系人
     } else {
-        QString projectName = text.mid(2);
+        // 移除emoji和空格，emoji占用多个字符
+        QString projectName = text;
+        projectName.remove("📁 ");  // 移除文件夹emoji和空格
         showSingleProject(projectName);
         contactPanel->show();  // 具体项目时显示联系人
     }
@@ -415,7 +426,8 @@ void DashboardWindow::onProjectListItemDoubleClicked(QListWidgetItem *item)
 {
     QString text = item->text();
     if (!text.startsWith("📋")) {
-        QString projectName = text.mid(2);
+        QString projectName = text;
+        projectName.remove("📁 ");  // 移除文件夹emoji和空格
         selectedProject = projectName;
         openProjectView();
     }
@@ -423,24 +435,44 @@ void DashboardWindow::onProjectListItemDoubleClicked(QListWidgetItem *item)
 
 void DashboardWindow::showAllProjects()
 {
-    projectTable->setRowCount(1);
+    ProjectDAO projectDAO;
+    WarningDAO warningDAO;
+    
+    // 从数据库获取所有活动项目
+    QList<Project> projects = projectDAO.getProjectsByStatus("active");
+    
+    // 设置表格行数
+    projectTable->setRowCount(projects.size());
+    
+    // 填充表格数据
+    for (int i = 0; i < projects.size(); i++) {
+        const Project &project = projects[i];
+        
+        projectTable->setItem(i, 0, new QTableWidgetItem(project.getProjectName()));
+        projectTable->setItem(i, 1, new QTableWidgetItem(project.getBrief()));
+        projectTable->setItem(i, 2, new QTableWidgetItem(project.getConstructionUnit()));
+        projectTable->setItem(i, 3, new QTableWidgetItem(project.getStartDate()));
+        projectTable->setItem(i, 4, new QTableWidgetItem(QString("%1%").arg(QString::number(project.getProgress(), 'f', 1))));
+        projectTable->setItem(i, 5, new QTableWidgetItem(project.getLocation()));
+        projectTable->setItem(i, 6, new QTableWidgetItem("查看"));
 
-    projectTable->setItem(0, 0, new QTableWidgetItem("青岛沿海公路示例工程"));
-    projectTable->setItem(0, 1, new QTableWidgetItem("示例工程简介"));
-    projectTable->setItem(0, 2, new QTableWidgetItem("示例施工单位"));
-    projectTable->setItem(0, 3, new QTableWidgetItem("2024-11-28"));
-    projectTable->setItem(0, 4, new QTableWidgetItem("56%"));
-    projectTable->setItem(0, 5, new QTableWidgetItem("山东青岛"));
-    projectTable->setItem(0, 6, new QTableWidgetItem("查看"));
-
-    for (int col = 0; col < 7; col++) {
-        projectTable->item(0, col)->setTextAlignment(Qt::AlignCenter);
+        for (int col = 0; col < 7; col++) {
+            projectTable->item(i, col)->setTextAlignment(Qt::AlignCenter);
+        }
     }
 
-    statisticsLabel->setText("在建项目统计\n\n"
-                             "项目总数: 1\n"
-                             "平均进度: 56%\n"
-                             "预警数量: 4");
+    // 更新统计信息
+    int projectCount = projectDAO.getProjectCount();
+    double avgProgress = projectDAO.getAverageProgress();
+    int warningCount = warningDAO.getTotalWarningCount();
+    
+    statisticsLabel->setText(QString("在建项目统计\n\n"
+                                    "项目总数: %1\n"
+                                    "平均进度: %2%\n"
+                                    "预警数量: %3")
+                            .arg(projectCount)
+                            .arg(QString::number(avgProgress, 'f', 1))
+                            .arg(warningCount));
     
     // 清除旧的进度条
     QLayoutItem *item;
@@ -451,29 +483,21 @@ void DashboardWindow::showAllProjects()
         delete item;
     }
     
-    // 根据项目数量动态创建进度条
-    struct ProjectProgress {
-        QString name;
-        int progress;
-    };
-    
-    QList<ProjectProgress> projects = {
-        {"青岛沿海公路示例工程", 56}
-    };
-    
-    for (const auto& proj : projects) {
+    // 为每个项目创建进度条
+    for (const auto& project : projects) {
         QWidget *progressWidget = new QWidget(progressContainer);
         QVBoxLayout *progressLayout = new QVBoxLayout(progressWidget);
         progressLayout->setContentsMargins(0, 5, 0, 5);
         progressLayout->setSpacing(5);
 
-        QLabel *projectLabel = new QLabel(proj.name, progressWidget);
+        QLabel *projectLabel = new QLabel(project.getProjectName(), progressWidget);
         projectLabel->setStyleSheet("font-size: 12px;");
         projectLabel->setWordWrap(true);
 
         QProgressBar *progressBar = new QProgressBar(progressWidget);
-        progressBar->setValue(proj.progress);
-        progressBar->setFormat(QString("%1%").arg(proj.progress));
+        int progress = static_cast<int>(project.getProgress());
+        progressBar->setValue(progress);
+        progressBar->setFormat(QString("%1%").arg(QString::number(project.getProgress(), 'f', 1)));
         progressBar->setStyleSheet(QString(R"(
             QProgressBar {
                 border: none;
@@ -501,25 +525,46 @@ void DashboardWindow::showAllProjects()
 
 void DashboardWindow::showSingleProject(const QString &projectName)
 {
+    ProjectDAO projectDAO;
+    WarningDAO warningDAO;
+    
+    // 从数据库获取项目信息
+    Project project = projectDAO.getProjectByName(projectName);
+    
+    if (!project.isValid()) {
+        StyleHelper::showWarning(this, "错误", "找不到项目信息");
+        return;
+    }
+    
+    // 设置表格行数为1，显示单个项目
     projectTable->setRowCount(1);
 
-    projectTable->setItem(0, 0, new QTableWidgetItem(projectName));
-    projectTable->setItem(0, 1, new QTableWidgetItem("示例工程简介"));
-    projectTable->setItem(0, 2, new QTableWidgetItem("示例施工单位"));
-    projectTable->setItem(0, 3, new QTableWidgetItem("2024-11-28"));
-    projectTable->setItem(0, 4, new QTableWidgetItem("56%"));
-    projectTable->setItem(0, 5, new QTableWidgetItem("山东青岛"));
+    projectTable->setItem(0, 0, new QTableWidgetItem(project.getProjectName()));
+    projectTable->setItem(0, 1, new QTableWidgetItem(project.getBrief()));
+    projectTable->setItem(0, 2, new QTableWidgetItem(project.getConstructionUnit()));
+    projectTable->setItem(0, 3, new QTableWidgetItem(project.getStartDate()));
+    projectTable->setItem(0, 4, new QTableWidgetItem(QString("%1%").arg(QString::number(project.getProgress(), 'f', 1))));
+    projectTable->setItem(0, 5, new QTableWidgetItem(project.getLocation()));
     projectTable->setItem(0, 6, new QTableWidgetItem("查看"));
 
     for (int col = 0; col < 7; col++) {
         projectTable->item(0, col)->setTextAlignment(Qt::AlignCenter);
     }
 
-    statisticsLabel->setText(QString("%1\n\n"
-                                     "当前进度: 56%%\n"
-                                     "预警数量: 4\n"
-                                     "掘进距离: 55m").arg(projectName));
+    // 获取该项目的预警数量
+    int warningCount = warningDAO.getWarningCountByProject(project.getProjectId());
 
+    // 更新统计信息
+    statisticsLabel->setText(QString("%1\n\n"
+                                     "当前进度: %2%\n"
+                                     "预警数量: %3\n"
+                                     "开工日期: %4")
+                            .arg(projectName)
+                            .arg(QString::number(project.getProgress(), 'f', 1))
+                            .arg(warningCount)
+                            .arg(project.getStartDate()));
+
+    // 联系人信息（这里可以扩展为从数据库读取，目前使用默认值）
     contact1Label->setText("张三  电话：15555555555");
     contact2Label->setText("李四  电话：16666666666");
     
@@ -543,8 +588,9 @@ void DashboardWindow::showSingleProject(const QString &projectName)
     projectLabel->setWordWrap(true);
 
     QProgressBar *progressBar = new QProgressBar(progressWidget);
-    progressBar->setValue(56);
-    progressBar->setFormat("56%");
+    int progress = static_cast<int>(project.getProgress());
+    progressBar->setValue(progress);
+    progressBar->setFormat(QString("%1%").arg(QString::number(project.getProgress(), 'f', 1)));
     progressBar->setStyleSheet(QString(R"(
         QProgressBar {
             border: none;

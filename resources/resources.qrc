@@ -14,5 +14,6 @@
         <file>icons/flag.png</file>
         <file>icons/lock.png</file>
         <file>images/welcome_bg.jpg</file>
+        <file>images/zhongjiaologo.png</file>
     </qresource>
 </RCC>

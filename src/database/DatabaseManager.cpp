@@ -314,18 +314,18 @@ bool DatabaseManager::insertDefaultData()
     
     qDebug() << "测试工程师账户创建成功 (用户名: engineer, 密码: eng123)";
     
-    // 插入示例项目
+    // 插入示例项目：青岛沿海公路
     query.prepare("INSERT INTO projects (project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status) "
                   "VALUES (:name, :brief, :lat, :lon, :unit, :date, :progress, :location, :status)");
-    query.bindValue(":name", "青岛地铁6号线示例区间");
-    query.bindValue(":brief", "这是一个示例项目，展示系统功能");
+    query.bindValue(":name", "青岛沿海公路");
+    query.bindValue(":brief", "测试简介");
     query.bindValue(":lat", 36.0671);
     query.bindValue(":lon", 120.3826);
-    query.bindValue(":unit", "中铁隧道局");
-    query.bindValue(":date", "2024-01-01");
-    query.bindValue(":progress", 35.5);
-    query.bindValue(":location", "山东省青岛市");
+    query.bindValue(":unit", "测试单位");
+    query.bindValue(":date", "2024-11-28");
+    query.bindValue(":progress", 66.7);
+    query.bindValue(":location", "山东青岛");
     query.bindValue(":status", "active");
     
     if (!query.exec()) {
@@ -333,7 +333,83 @@ bool DatabaseManager::insertDefaultData()
         return false;
     }
     
-    qDebug() << "示例项目创建成功";
+    int projectId = query.lastInsertId().toInt();
+    qDebug() << "示例项目创建成功, ID:" << projectId;
     
+    // 为项目插入预警信息（根据PDF中的预警表格数据）
+    query.prepare("INSERT INTO warnings (project_id, warning_number, warning_level, "
+                  "warning_type, latitude, longitude, depth, threshold_value, distance, warning_time) "
+                  "VALUES (:pid, :num, :level, :type, :lat, :lon, :depth, :threshold, :distance, :time)");
+    
+    // 预警1: 岩溶发育
+    query.bindValue(":pid", projectId);
+    query.bindValue(":num", 16);
+    query.bindValue(":level", "D");
+    query.bindValue(":type", "岩溶发育");
+    query.bindValue(":lat", 36.0671);
+    query.bindValue(":lon", 120.3826);
+    query.bindValue(":depth", 15.5);
+    query.bindValue(":threshold", 1);
+    query.bindValue(":distance", -6.6);
+    query.bindValue(":time", QDateTime::fromString("2024-12-02 13:36:00", "yyyy-MM-dd HH:mm:ss"));
+    if (!query.exec()) {
+        qWarning() << "插入预警1失败:" << query.lastError().text();
+    }
+    
+    // 预警2: 涌水涌泥
+    query.bindValue(":pid", projectId);
+    query.bindValue(":num", 17);
+    query.bindValue(":level", "D");
+    query.bindValue(":type", "涌水涌泥");
+    query.bindValue(":lat", 36.0672);
+    query.bindValue(":lon", 120.3827);
+    query.bindValue(":depth", 16.2);
+    query.bindValue(":threshold", 1);
+    query.bindValue(":distance", 3.2);
+    query.bindValue(":time", QDateTime::fromString("2024-12-02 13:36:00", "yyyy-MM-dd HH:mm:ss"));
+    if (!query.exec()) {
+        qWarning() << "插入预警2失败:" << query.lastError().text();
+    }
+    
+    // 预警3: 岩层断裂
+    query.bindValue(":pid", projectId);
+    query.bindValue(":num", 18);
+    query.bindValue(":level", "C");
+    query.bindValue(":type", "岩层断裂");
+    query.bindValue(":lat", 36.0673);
+    query.bindValue(":lon", 120.3828);
+    query.bindValue(":depth", 17.8);
+    query.bindValue(":threshold", 2);
+    query.bindValue(":distance", 4.2);
+    query.bindValue(":time", QDateTime::fromString("2024-12-02 13:36:00", "yyyy-MM-dd HH:mm:ss"));
+    if (!query.exec()) {
+        qWarning() << "插入预警3失败:" << query.lastError().text();
+    }
+    
+    // 预警4: 瓦斯区域
+    query.bindValue(":pid", projectId);
+    query.bindValue(":num", 19);
+    query.bindValue(":level", "D");
+    query.bindValue(":type", "瓦斯区域");
+    query.bindValue(":lat", 36.0674);
+    query.bindValue(":lon", 120.3829);
+    query.bindValue(":depth", 18.5);
+    query.bindValue(":threshold", 1);
+    query.bindValue(":distance", 12.0);
+    query.bindValue(":time", QDateTime::fromString("2024-12-02 13:36:00", "yyyy-MM-dd HH:mm:ss"));
+    if (!query.exec()) {
+        qWarning() << "插入预警4失败:" << query.lastError().text();
+    }
+    
+    // 插入新闻
+    query.prepare("INSERT INTO news (news_content, created_by) VALUES (:content, :createdBy)");
+    
+    query.bindValue(":content", "北京地铁在建线路11条线（段）盾构法施工区间占比68%");
+    query.bindValue(":createdBy", 1);
+    if (!query.exec()) {
+        qWarning() << "插入新闻失败:" << query.lastError().text();
+    }
+    
+    qDebug() << "默认数据插入完成";
     return true;
 }
