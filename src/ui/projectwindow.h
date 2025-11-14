@@ -8,6 +8,8 @@
 #include <QLineEdit>
 #include <QTableWidget>
 
+class Geological2DWidget;
+
 class ProjectWindow : public QMainWindow
 {
     Q_OBJECT

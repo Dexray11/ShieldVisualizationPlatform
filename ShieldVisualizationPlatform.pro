@@ -14,6 +14,7 @@ SOURCES += \
     src/ui/dashboardwindow.cpp \
     src/ui/projectwindow.cpp \
     src/ui/projectmanagementwindow.cpp \
+    src/ui/geological2dwidget.cpp \
     src/utils/stylehelper.cpp \
     src/database/DatabaseManager.cpp \
     src/database/UserDAO.cpp \
@@ -31,6 +32,7 @@ HEADERS += \
     src/ui/dashboardwindow.h \
     src/ui/projectwindow.h \
     src/ui/projectmanagementwindow.h \
+    src/ui/geological2dwidget.h \
     src/utils/stylehelper.h \
     src/database/DatabaseManager.h \
     src/database/UserDAO.h \

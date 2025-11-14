@@ -4,6 +4,7 @@ release/mainmenuwindow.o
 release/dashboardwindow.o
 release/projectwindow.o
 release/projectmanagementwindow.o
+release/geological2dwidget.o
 release/stylehelper.o
 release/DatabaseManager.o
 release/UserDAO.o
@@ -20,3 +21,4 @@ release/moc_mainmenuwindow.o
 release/moc_dashboardwindow.o
 release/moc_projectwindow.o
 release/moc_projectmanagementwindow.o
+release/moc_geological2dwidget.o

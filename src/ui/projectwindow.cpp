@@ -1,5 +1,6 @@
 #include "projectwindow.h"
 #include "mainmenuwindow.h"
+#include "geological2dwidget.h"
 #include "../utils/stylehelper.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -376,26 +377,46 @@ void ProjectWindow::load2DView()
     titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
 
-    // 地质剖面图
-    QLabel *imageLabel = new QLabel(mainContent);
-    imageLabel->setMinimumSize(1000, 400);
-
-    QPixmap geological2D(":/images/geological_2d.png");
-    if (!geological2D.isNull()) {
-        imageLabel->setPixmap(geological2D.scaled(1000, 600, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        // 创建占位图
-        QPixmap placeholder(1000, 500);
-        placeholder.fill(QColor("#ffffff"));
-        QPainter painter(&placeholder);
-        painter.setPen(QPen(QColor(StyleHelper::COLOR_BORDER), 2, Qt::DashLine));
-        painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
-        painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
-        painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "二维地质剖面图\n（请添加图片到 resources/images/geological_2d.png）");
-        imageLabel->setPixmap(placeholder);
-    }
-    imageLabel->setAlignment(Qt::AlignCenter);
+    // 创建二维地质视图widget
+    Geological2DWidget *geo2DWidget = new Geological2DWidget(mainContent);
+    geo2DWidget->setMinimumSize(1000, 450);
+    geo2DWidget->loadBoreholeData("");  // 使用内置数据
+    
+    // 掌子面视图（简化显示）
+    QWidget *faceViewWidget = new QWidget(mainContent);
+    faceViewWidget->setFixedSize(200, 200);
+    faceViewWidget->setStyleSheet("background-color: white; border: 2px solid #1565C0; border-radius: 100px;");
+    
+    QLabel *faceLabel = new QLabel("掌子面视图", faceViewWidget);
+    faceLabel->setAlignment(Qt::AlignCenter);
+    faceLabel->setStyleSheet("font-size: 12px; font-weight: bold; color: #1565C0;");
+    faceLabel->setGeometry(50, 85, 100, 30);
+    
+    // 地层比例饼图
+    QWidget *pieChartWidget = new QWidget(mainContent);
+    pieChartWidget->setFixedSize(200, 150);
+    pieChartWidget->setStyleSheet("background-color: white; border: 1px solid #cccccc; border-radius: 5px;");
+    
+    QLabel *pieTitle = new QLabel("地层占比", pieChartWidget);
+    pieTitle->setStyleSheet("font-size: 12px; font-weight: bold;");
+    pieTitle->setGeometry(70, 10, 60, 20);
+    
+    QLabel *pieContent = new QLabel("粉砂 32.7%\n中砂 36.8%\n�ite岩 30.5%", pieChartWidget);
+    pieContent->setStyleSheet("font-size: 11px;");
+    pieContent->setGeometry(60, 50, 100, 80);
+    
+    // 右侧面板布局
+    QWidget *rightPanel = new QWidget(mainContent);
+    QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
+    rightLayout->addWidget(faceViewWidget);
+    rightLayout->addWidget(pieChartWidget);
+    rightLayout->addStretch();
+    
+    // 主视图区域
+    QWidget *viewArea = new QWidget(mainContent);
+    QHBoxLayout *viewLayout = new QHBoxLayout(viewArea);
+    viewLayout->addWidget(geo2DWidget, 1);
+    viewLayout->addWidget(rightPanel);
 
     // 预警信息标题
     QLabel *warningTitle = new QLabel("预警信息", mainContent);
@@ -409,8 +430,8 @@ void ProjectWindow::load2DView()
     warningTable->horizontalHeader()->setStretchLastSection(true);
     warningTable->setAlternatingRowColors(true);
     warningTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    warningTable->setMaximumHeight(180);
 
-    // 修复：使用结构体数组而不是QStringList数组
     struct WarningData {
         QString id;
         QString level;
@@ -435,17 +456,15 @@ void ProjectWindow::load2DView()
         warningTable->setItem(row, 4, new QTableWidgetItem(warnings[row].distance));
         warningTable->setItem(row, 5, new QTableWidgetItem(warnings[row].time));
 
-        // 居中对齐
         for (int col = 0; col < 6; col++) {
             warningTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
         }
     }
 
     layout->addWidget(titleLabel);
-    layout->addWidget(imageLabel);
+    layout->addWidget(viewArea, 1);
     layout->addWidget(warningTitle);
     layout->addWidget(warningTable);
-    layout->addStretch();
 }
 
 void ProjectWindow::load3DView()
