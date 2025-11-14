@@ -9,9 +9,11 @@ release/DatabaseManager.o
 release/UserDAO.o
 release/ProjectDAO.o
 release/WarningDAO.o
+release/NewsDAO.o
 release/User.o
 release/Project.o
 release/Warning.o
+release/News.o
 release/qrc_resources.o
 release/moc_loginwindow.o
 release/moc_mainmenuwindow.o

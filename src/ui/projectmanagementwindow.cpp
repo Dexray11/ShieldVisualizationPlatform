@@ -3,8 +3,10 @@
 #include "../utils/stylehelper.h"
 #include "../database/ProjectDAO.h"
 #include "../database/WarningDAO.h"
+#include "../database/NewsDAO.h"
 #include "../models/Project.h"
 #include "../models/Warning.h"
+#include "../models/News.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -19,6 +21,8 @@
 #include <QScreen>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QCheckBox>
+#include <QTextEdit>
 
 ProjectManagementWindow::ProjectManagementWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -500,32 +504,35 @@ void ProjectManagementWindow::createNewsModuleTab()
     QWidget *topWidget = new QWidget(tab);
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     
-    QPushButton *publishBtn = new QPushButton("发布新闻", topWidget);
-    publishBtn->setStyleSheet(StyleHelper::getButtonStyle());
-    publishBtn->setMinimumHeight(40);
+    publishNewsButton = new QPushButton("发布新闻", topWidget);
+    publishNewsButton->setStyleSheet(StyleHelper::getButtonStyle());
+    publishNewsButton->setMinimumHeight(40);
+    connect(publishNewsButton, &QPushButton::clicked, this, &ProjectManagementWindow::onPublishNews);
     
-    QPushButton *deleteBtn = new QPushButton("删除所选", topWidget);
-    deleteBtn->setStyleSheet(StyleHelper::getButtonStyle());
-    deleteBtn->setMinimumHeight(40);
+    deleteNewsButton = new QPushButton("删除所选", topWidget);
+    deleteNewsButton->setStyleSheet(StyleHelper::getButtonStyle());
+    deleteNewsButton->setMinimumHeight(40);
+    connect(deleteNewsButton, &QPushButton::clicked, this, &ProjectManagementWindow::onDeleteSelectedNews);
     
-    topLayout->addWidget(publishBtn);
-    topLayout->addWidget(deleteBtn);
+    topLayout->addWidget(publishNewsButton);
+    topLayout->addWidget(deleteNewsButton);
     topLayout->addStretch();
 
     // 新闻表格
-    newsTable = new QTableWidget(0, 3, tab);
-    newsTable->setHorizontalHeaderLabels({"新闻内容", "发布时间", "操作"});
+    newsTable = new QTableWidget(0, 4, tab);
+    newsTable->setHorizontalHeaderLabels({"☐", "新闻内容", "发布时间", "操作"});
     newsTable->setStyleSheet(StyleHelper::getTableStyle());
     newsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     // 问题2彻底修复：设置默认行高为50px
     newsTable->verticalHeader()->setDefaultSectionSize(50);
     
-    // 问题2彻底修复：先设置所有列Stretch
+    // 设置列宽
     newsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    // 问题2彻底修复：操作列固定为200px
-    newsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-    newsTable->setColumnWidth(2, 200);  // 增加到200px
+    newsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);  // 复选框列
+    newsTable->setColumnWidth(0, 50);
+    newsTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);  // 操作列
+    newsTable->setColumnWidth(3, 200);
     newsTable->setAlternatingRowColors(true);
 
     layout->addWidget(topWidget);
@@ -640,63 +647,75 @@ void ProjectManagementWindow::loadProjectData()
     supplementaryTable->setRowCount(0);
     
     // ========== 加载新闻数据 ==========
-    // 从数据库news表中读取新闻
-    QSqlQuery query;
-    query.prepare("SELECT content, publish_time FROM news ORDER BY publish_time DESC");
+    NewsDAO newsDAO;
+    QList<News> newsList = newsDAO.getAllNews();
     
-    if (query.exec()) {
-        QList<QPair<QString, QString>> newsList;
-        while (query.next()) {
-            QString content = query.value(0).toString();
-            QString publishTime = query.value(1).toString();
-            newsList.append(qMakePair(content, publishTime));
-        }
+    newsTable->setRowCount(newsList.size());
+    
+    for (int row = 0; row < newsList.size(); row++) {
+        const News &news = newsList[row];
         
-        newsTable->setRowCount(newsList.size());
+        // 添加复选框列（第0列）
+        QWidget *checkboxWidget = new QWidget();
+        QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+        checkboxLayout->setContentsMargins(0, 0, 0, 0);
+        checkboxLayout->setAlignment(Qt::AlignCenter);
+        QCheckBox *checkbox = new QCheckBox();
+        checkbox->setProperty("newsId", news.getNewsId());  // 保存新闻ID
+        checkboxLayout->addWidget(checkbox);
+        newsTable->setCellWidget(row, 0, checkboxWidget);
         
-        for (int row = 0; row < newsList.size(); row++) {
-            newsTable->setItem(row, 0, new QTableWidgetItem(newsList[row].first));
-            newsTable->setItem(row, 1, new QTableWidgetItem(newsList[row].second));
-            
-            newsTable->item(row, 0)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            newsTable->item(row, 1)->setTextAlignment(Qt::AlignCenter);
-            
-            // 创建操作按钮
-            QWidget *operationWidget = new QWidget();
-            operationWidget->setMinimumHeight(40);
-            QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
-            operationLayout->setContentsMargins(10, 5, 10, 5);
-            operationLayout->setSpacing(12);
-            
-            QPushButton *editBtn = new QPushButton("编辑", operationWidget);
-            QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
-            
-            QString buttonStyle = R"(
-                QPushButton {
-                    background-color: %1;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 13px;
-                    font-weight: bold;
-                    padding: 0px;
-                }
-                QPushButton:hover {
-                    background-color: %2;
-                }
-            )";
-            
-            editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
-            deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
-            
-            editBtn->setFixedSize(70, 32);
-            deleteBtn->setFixedSize(70, 32);
-            
-            operationLayout->addWidget(editBtn);
-            operationLayout->addWidget(deleteBtn);
-            
-            newsTable->setCellWidget(row, 2, operationWidget);
-        }
+        // 新闻内容（第1列）
+        newsTable->setItem(row, 1, new QTableWidgetItem(news.getNewsContent()));
+        // 发布时间（第2列）
+        newsTable->setItem(row, 2, new QTableWidgetItem(news.getPublishTime().toString("yyyy-MM-dd hh:mm:ss")));
+        
+        newsTable->item(row, 1)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        newsTable->item(row, 2)->setTextAlignment(Qt::AlignCenter);
+        
+        // 创建操作按钮（第3列）
+        QWidget *operationWidget = new QWidget();
+        operationWidget->setMinimumHeight(40);
+        QHBoxLayout *operationLayout = new QHBoxLayout(operationWidget);
+        operationLayout->setContentsMargins(10, 5, 10, 5);
+        operationLayout->setSpacing(12);
+        
+        QPushButton *editBtn = new QPushButton("编辑", operationWidget);
+        QPushButton *deleteBtn = new QPushButton("删除", operationWidget);
+        
+        QString buttonStyle = R"(
+            QPushButton {
+                background-color: %1;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: %2;
+            }
+        )";
+        
+        editBtn->setStyleSheet(buttonStyle.arg("#4A90E2").arg("#357ABD"));
+        deleteBtn->setStyleSheet(buttonStyle.arg("#E74C3C").arg("#C0392B"));
+        
+        editBtn->setFixedSize(70, 32);
+        deleteBtn->setFixedSize(70, 32);
+        
+        // 连接信号（使用lambda传递行号）
+        connect(editBtn, &QPushButton::clicked, this, [this, row]() {
+            onEditNews(row);
+        });
+        connect(deleteBtn, &QPushButton::clicked, this, [this, row]() {
+            onDeleteNews(row);
+        });
+        
+        operationLayout->addWidget(editBtn);
+        operationLayout->addWidget(deleteBtn);
+        
+        newsTable->setCellWidget(row, 3, operationWidget);
     }
 }
 
@@ -837,4 +856,231 @@ void ProjectManagementWindow::onTabChanged(int index)
 {
     Q_UNUSED(index);
     // 可以在这里处理标签页切换事件
+}
+
+void ProjectManagementWindow::onPublishNews()
+{
+    // 创建发布新闻对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("发布新闻");
+    dialog.setFixedSize(600, 300);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(15);
+    layout->setContentsMargins(30, 30, 30, 30);
+
+    QLabel *label = new QLabel("新闻内容：", &dialog);
+    label->setStyleSheet("font-size: 14px; font-weight: bold;");
+
+    QTextEdit *contentEdit = new QTextEdit(&dialog);
+    contentEdit->setPlaceholderText("请输入新闻内容...");
+    contentEdit->setStyleSheet(StyleHelper::getInputStyle());
+    contentEdit->setMinimumHeight(150);
+
+    layout->addWidget(label);
+    layout->addWidget(contentEdit);
+
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("发布");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    layout->addWidget(buttonBox);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString newsContent = contentEdit->toPlainText().trimmed();
+        
+        if (newsContent.isEmpty()) {
+            QMessageBox::warning(this, "警告", "新闻内容不能为空！");
+            return;
+        }
+
+        // 创建新闻对象并保存到数据库
+        News news;
+        news.setNewsContent(newsContent);
+        news.setPublishTime(QDateTime::currentDateTime());
+        news.setCreatedBy(1);  // 假设当前用户ID为1，实际应该从登录信息获取
+
+        NewsDAO newsDAO;
+        if (newsDAO.addNews(news)) {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("成功");
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setText("新闻发布成功！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+            msgBox.exec();
+            loadProjectData();  // 重新加载数据
+        } else {
+            QMessageBox::critical(this, "错误", "新闻发布失败：" + newsDAO.getLastError());
+        }
+    }
+}
+
+void ProjectManagementWindow::onDeleteSelectedNews()
+{
+    // 收集选中的新闻ID
+    QList<int> selectedNewsIds;
+    
+    for (int row = 0; row < newsTable->rowCount(); row++) {
+        QWidget *checkboxWidget = newsTable->cellWidget(row, 0);
+        if (checkboxWidget) {
+            QCheckBox *checkbox = checkboxWidget->findChild<QCheckBox*>();
+            if (checkbox && checkbox->isChecked()) {
+                int newsId = checkbox->property("newsId").toInt();
+                selectedNewsIds.append(newsId);
+            }
+        }
+    }
+    
+    if (selectedNewsIds.isEmpty()) {
+        QMessageBox::warning(this, "警告", "请至少选择一条新闻！");
+        return;
+    }
+    
+    // 确认删除
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("确认删除");
+    msgBox.setIcon(QMessageBox::Question);
+    msgBox.setText(QString("确定要删除选中的 %1 条新闻吗？").arg(selectedNewsIds.size()));
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+    
+    if (msgBox.exec() == QMessageBox::Yes) {
+        NewsDAO newsDAO;
+        if (newsDAO.deleteNewsList(selectedNewsIds)) {
+            QMessageBox resultBox(this);
+            resultBox.setWindowTitle("成功");
+            resultBox.setIcon(QMessageBox::Information);
+            resultBox.setText("新闻删除成功！");
+            resultBox.setStyleSheet("QMessageBox { background-color: white; }");
+            resultBox.exec();
+            loadProjectData();  // 重新加载数据
+        } else {
+            QMessageBox::critical(this, "错误", "删除新闻失败：" + newsDAO.getLastError());
+        }
+    }
+}
+
+void ProjectManagementWindow::onEditNews(int row)
+{
+    if (row < 0 || row >= newsTable->rowCount()) {
+        return;
+    }
+    
+    // 获取当前新闻内容（第1列）
+    QString currentContent = newsTable->item(row, 1)->text();
+    
+    // 获取新闻ID（第0列的复选框）
+    QWidget *checkboxWidget = newsTable->cellWidget(row, 0);
+    int newsId = 0;
+    if (checkboxWidget) {
+        QCheckBox *checkbox = checkboxWidget->findChild<QCheckBox*>();
+        if (checkbox) {
+            newsId = checkbox->property("newsId").toInt();
+        }
+    }
+    
+    // 创建编辑对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("编辑新闻");
+    dialog.setFixedSize(600, 300);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(15);
+    layout->setContentsMargins(30, 30, 30, 30);
+
+    QLabel *label = new QLabel("新闻内容：", &dialog);
+    label->setStyleSheet("font-size: 14px; font-weight: bold;");
+
+    QTextEdit *contentEdit = new QTextEdit(&dialog);
+    contentEdit->setPlainText(currentContent);
+    contentEdit->setStyleSheet(StyleHelper::getInputStyle());
+    contentEdit->setMinimumHeight(150);
+
+    layout->addWidget(label);
+    layout->addWidget(contentEdit);
+
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("保存");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    layout->addWidget(buttonBox);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString newContent = contentEdit->toPlainText().trimmed();
+        
+        if (newContent.isEmpty()) {
+            QMessageBox::warning(this, "警告", "新闻内容不能为空！");
+            return;
+        }
+
+        // 更新新闻
+        NewsDAO newsDAO;
+        News news = newsDAO.getNewsById(newsId);
+        if (news.isValid()) {
+            news.setNewsContent(newContent);
+            news.setPublishTime(QDateTime::currentDateTime());  // 更新发布时间
+            
+            if (newsDAO.updateNews(news)) {
+                QMessageBox resultBox(this);
+                resultBox.setWindowTitle("成功");
+                resultBox.setIcon(QMessageBox::Information);
+                resultBox.setText("新闻更新成功！");
+                resultBox.setStyleSheet("QMessageBox { background-color: white; }");
+                resultBox.exec();
+                loadProjectData();  // 重新加载数据
+            } else {
+                QMessageBox::critical(this, "错误", "更新新闻失败：" + newsDAO.getLastError());
+            }
+        }
+    }
+}
+
+void ProjectManagementWindow::onDeleteNews(int row)
+{
+    if (row < 0 || row >= newsTable->rowCount()) {
+        return;
+    }
+    
+    // 获取新闻ID（第0列的复选框）
+    QWidget *checkboxWidget = newsTable->cellWidget(row, 0);
+    int newsId = 0;
+    if (checkboxWidget) {
+        QCheckBox *checkbox = checkboxWidget->findChild<QCheckBox*>();
+        if (checkbox) {
+            newsId = checkbox->property("newsId").toInt();
+        }
+    }
+    
+    // 获取新闻内容（第1列）
+    QString newsContent = newsTable->item(row, 1)->text();
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("确认删除");
+    msgBox.setIcon(QMessageBox::Question);
+    msgBox.setText(QString("确定要删除这条新闻吗？\n\n%1").arg(newsContent.left(50) + "..."));
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+    
+    if (msgBox.exec() == QMessageBox::Yes) {
+        NewsDAO newsDAO;
+        if (newsDAO.deleteNews(newsId)) {
+            QMessageBox resultBox(this);
+            resultBox.setWindowTitle("成功");
+            resultBox.setIcon(QMessageBox::Information);
+            resultBox.setText("新闻删除成功！");
+            resultBox.setStyleSheet("QMessageBox { background-color: white; }");
+            resultBox.exec();
+            loadProjectData();  // 重新加载数据
+        } else {
+            QMessageBox::critical(this, "错误", "删除新闻失败：" + newsDAO.getLastError());
+        }
+    }
 }

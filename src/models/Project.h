@@ -31,6 +31,10 @@ public:
     QString getStatus() const { return status; }
     QString getMap2DPath() const { return map2DPath; }
     QString getMap3DPath() const { return map3DPath; }
+    QString getEmergencyContact1Name() const { return emergencyContact1Name; }
+    QString getEmergencyContact1Phone() const { return emergencyContact1Phone; }
+    QString getEmergencyContact2Name() const { return emergencyContact2Name; }
+    QString getEmergencyContact2Phone() const { return emergencyContact2Phone; }
     QDateTime getCreatedAt() const { return createdAt; }
     QDateTime getUpdatedAt() const { return updatedAt; }
     
@@ -47,6 +51,10 @@ public:
     void setStatus(const QString &stat) { status = stat; }
     void setMap2DPath(const QString &path) { map2DPath = path; }
     void setMap3DPath(const QString &path) { map3DPath = path; }
+    void setEmergencyContact1Name(const QString &name) { emergencyContact1Name = name; }
+    void setEmergencyContact1Phone(const QString &phone) { emergencyContact1Phone = phone; }
+    void setEmergencyContact2Name(const QString &name) { emergencyContact2Name = name; }
+    void setEmergencyContact2Phone(const QString &phone) { emergencyContact2Phone = phone; }
     void setCreatedAt(const QDateTime &time) { createdAt = time; }
     void setUpdatedAt(const QDateTime &time) { updatedAt = time; }
     
@@ -66,6 +74,10 @@ private:
     QString status;
     QString map2DPath;
     QString map3DPath;
+    QString emergencyContact1Name;
+    QString emergencyContact1Phone;
+    QString emergencyContact2Name;
+    QString emergencyContact2Phone;
     QDateTime createdAt;
     QDateTime updatedAt;
 };

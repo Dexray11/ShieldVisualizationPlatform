@@ -9,9 +9,11 @@ debug/DatabaseManager.o
 debug/UserDAO.o
 debug/ProjectDAO.o
 debug/WarningDAO.o
+debug/NewsDAO.o
 debug/User.o
 debug/Project.o
 debug/Warning.o
+debug/News.o
 debug/qrc_resources.o
 debug/moc_loginwindow.o
 debug/moc_mainmenuwindow.o

@@ -21,7 +21,10 @@ QList<Project> ProjectDAO::getAllProjects()
     QSqlQuery query(db);
     QString sql = "SELECT project_id, project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
-                  "map_2d_path, map_3d_path, created_at, updated_at "
+                  "map_2d_path, map_3d_path, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone, "
+                  "created_at, updated_at "
                   "FROM projects ORDER BY created_at DESC";
     
     if (!query.exec(sql)) {
@@ -44,6 +47,10 @@ QList<Project> ProjectDAO::getAllProjects()
         project.setStatus(query.value("status").toString());
         project.setMap2DPath(query.value("map_2d_path").toString());
         project.setMap3DPath(query.value("map_3d_path").toString());
+        project.setEmergencyContact1Name(query.value("emergency_contact1_name").toString());
+        project.setEmergencyContact1Phone(query.value("emergency_contact1_phone").toString());
+        project.setEmergencyContact2Name(query.value("emergency_contact2_name").toString());
+        project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
         
@@ -61,7 +68,10 @@ Project ProjectDAO::getProjectById(int projectId)
     QSqlQuery query(db);
     query.prepare("SELECT project_id, project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
-                  "map_2d_path, map_3d_path, created_at, updated_at "
+                  "map_2d_path, map_3d_path, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone, "
+                  "created_at, updated_at "
                   "FROM projects WHERE project_id = :id");
     query.bindValue(":id", projectId);
     
@@ -84,6 +94,10 @@ Project ProjectDAO::getProjectById(int projectId)
         project.setStatus(query.value("status").toString());
         project.setMap2DPath(query.value("map_2d_path").toString());
         project.setMap3DPath(query.value("map_3d_path").toString());
+        project.setEmergencyContact1Name(query.value("emergency_contact1_name").toString());
+        project.setEmergencyContact1Phone(query.value("emergency_contact1_phone").toString());
+        project.setEmergencyContact2Name(query.value("emergency_contact2_name").toString());
+        project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
     }
@@ -99,7 +113,10 @@ Project ProjectDAO::getProjectByName(const QString &projectName)
     QSqlQuery query(db);
     query.prepare("SELECT project_id, project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
-                  "map_2d_path, map_3d_path, created_at, updated_at "
+                  "map_2d_path, map_3d_path, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone, "
+                  "created_at, updated_at "
                   "FROM projects WHERE project_name = :name");
     query.bindValue(":name", projectName);
     
@@ -122,6 +139,10 @@ Project ProjectDAO::getProjectByName(const QString &projectName)
         project.setStatus(query.value("status").toString());
         project.setMap2DPath(query.value("map_2d_path").toString());
         project.setMap3DPath(query.value("map_3d_path").toString());
+        project.setEmergencyContact1Name(query.value("emergency_contact1_name").toString());
+        project.setEmergencyContact1Phone(query.value("emergency_contact1_phone").toString());
+        project.setEmergencyContact2Name(query.value("emergency_contact2_name").toString());
+        project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
     }
@@ -137,7 +158,10 @@ QList<Project> ProjectDAO::getProjectsByStatus(const QString &status)
     QSqlQuery query(db);
     query.prepare("SELECT project_id, project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
-                  "map_2d_path, map_3d_path, created_at, updated_at "
+                  "map_2d_path, map_3d_path, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone, "
+                  "created_at, updated_at "
                   "FROM projects WHERE status = :status ORDER BY created_at DESC");
     query.bindValue(":status", status);
     
@@ -161,6 +185,10 @@ QList<Project> ProjectDAO::getProjectsByStatus(const QString &status)
         project.setStatus(query.value("status").toString());
         project.setMap2DPath(query.value("map_2d_path").toString());
         project.setMap3DPath(query.value("map_3d_path").toString());
+        project.setEmergencyContact1Name(query.value("emergency_contact1_name").toString());
+        project.setEmergencyContact1Phone(query.value("emergency_contact1_phone").toString());
+        project.setEmergencyContact2Name(query.value("emergency_contact2_name").toString());
+        project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
         
@@ -177,9 +205,12 @@ bool ProjectDAO::insertProject(const Project &project)
     QSqlQuery query(db);
     query.prepare("INSERT INTO projects (project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
-                  "map_2d_path, map_3d_path) "
+                  "map_2d_path, map_3d_path, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone) "
                   "VALUES (:name, :brief, :lat, :lon, :unit, :date, :progress, "
-                  ":location, :status, :map2d, :map3d)");
+                  ":location, :status, :map2d, :map3d, "
+                  ":contact1Name, :contact1Phone, :contact2Name, :contact2Phone)");
     
     query.bindValue(":name", project.getProjectName());
     query.bindValue(":brief", project.getBrief());
@@ -192,6 +223,10 @@ bool ProjectDAO::insertProject(const Project &project)
     query.bindValue(":status", project.getStatus());
     query.bindValue(":map2d", project.getMap2DPath());
     query.bindValue(":map3d", project.getMap3DPath());
+    query.bindValue(":contact1Name", project.getEmergencyContact1Name());
+    query.bindValue(":contact1Phone", project.getEmergencyContact1Phone());
+    query.bindValue(":contact2Name", project.getEmergencyContact2Name());
+    query.bindValue(":contact2Phone", project.getEmergencyContact2Phone());
     
     if (!query.exec()) {
         lastError = "插入项目失败: " + query.lastError().text();
@@ -211,6 +246,8 @@ bool ProjectDAO::updateProject(const Project &project)
                   "latitude = :lat, longitude = :lon, construction_unit = :unit, "
                   "start_date = :date, progress = :progress, location = :location, "
                   "status = :status, map_2d_path = :map2d, map_3d_path = :map3d, "
+                  "emergency_contact1_name = :contact1Name, emergency_contact1_phone = :contact1Phone, "
+                  "emergency_contact2_name = :contact2Name, emergency_contact2_phone = :contact2Phone, "
                   "updated_at = CURRENT_TIMESTAMP "
                   "WHERE project_id = :id");
     
@@ -226,6 +263,10 @@ bool ProjectDAO::updateProject(const Project &project)
     query.bindValue(":status", project.getStatus());
     query.bindValue(":map2d", project.getMap2DPath());
     query.bindValue(":map3d", project.getMap3DPath());
+    query.bindValue(":contact1Name", project.getEmergencyContact1Name());
+    query.bindValue(":contact1Phone", project.getEmergencyContact1Phone());
+    query.bindValue(":contact2Name", project.getEmergencyContact2Name());
+    query.bindValue(":contact2Phone", project.getEmergencyContact2Phone());
     
     if (!query.exec()) {
         lastError = "更新项目失败: " + query.lastError().text();

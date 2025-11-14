@@ -23,6 +23,10 @@ private slots:
     void onEditProject(int row);
     void onDeleteProject(int row);
     void onTabChanged(int index);
+    void onPublishNews();
+    void onDeleteSelectedNews();
+    void onEditNews(int row);
+    void onDeleteNews(int row);
 
 private:
     void setupUI();
@@ -55,6 +59,8 @@ private:
     QPushButton *backButton;
     QPushButton *minimizeButton;
     QPushButton *closeButton;
+    QPushButton *publishNewsButton;
+    QPushButton *deleteNewsButton;
 };
 
 #endif // PROJECTMANAGEMENTWINDOW_H

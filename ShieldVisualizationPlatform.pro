@@ -19,9 +19,11 @@ SOURCES += \
     src/database/UserDAO.cpp \
     src/database/ProjectDAO.cpp \
     src/database/WarningDAO.cpp \
+    src/database/NewsDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
-    src/models/Warning.cpp
+    src/models/Warning.cpp \
+    src/models/News.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -34,9 +36,11 @@ HEADERS += \
     src/database/UserDAO.h \
     src/database/ProjectDAO.h \
     src/database/WarningDAO.h \
+    src/database/NewsDAO.h \
     src/models/User.h \
     src/models/Project.h \
-    src/models/Warning.h
+    src/models/Warning.h \
+    src/models/News.h
 
 RESOURCES += \
     resources/resources.qrc

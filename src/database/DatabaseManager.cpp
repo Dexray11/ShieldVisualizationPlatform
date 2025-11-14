@@ -208,6 +208,10 @@ bool DatabaseManager::createTables()
             status VARCHAR(20) DEFAULT 'active',
             map_2d_path VARCHAR(500),
             map_3d_path VARCHAR(500),
+            emergency_contact1_name VARCHAR(50),
+            emergency_contact1_phone VARCHAR(20),
+            emergency_contact2_name VARCHAR(50),
+            emergency_contact2_phone VARCHAR(20),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -316,8 +320,11 @@ bool DatabaseManager::insertDefaultData()
     
     // 插入示例项目：青岛沿海公路
     query.prepare("INSERT INTO projects (project_name, brief, latitude, longitude, "
-                  "construction_unit, start_date, progress, location, status) "
-                  "VALUES (:name, :brief, :lat, :lon, :unit, :date, :progress, :location, :status)");
+                  "construction_unit, start_date, progress, location, status, "
+                  "emergency_contact1_name, emergency_contact1_phone, "
+                  "emergency_contact2_name, emergency_contact2_phone) "
+                  "VALUES (:name, :brief, :lat, :lon, :unit, :date, :progress, :location, :status, "
+                  ":contact1Name, :contact1Phone, :contact2Name, :contact2Phone)");
     query.bindValue(":name", "青岛沿海公路");
     query.bindValue(":brief", "测试简介");
     query.bindValue(":lat", 36.0671);
@@ -327,6 +334,10 @@ bool DatabaseManager::insertDefaultData()
     query.bindValue(":progress", 66.7);
     query.bindValue(":location", "山东青岛");
     query.bindValue(":status", "active");
+    query.bindValue(":contact1Name", "张三");
+    query.bindValue(":contact1Phone", "15555555555");
+    query.bindValue(":contact2Name", "李四");
+    query.bindValue(":contact2Phone", "16666666666");
     
     if (!query.exec()) {
         qWarning() << "插入示例项目失败:" << query.lastError().text();
@@ -407,7 +418,25 @@ bool DatabaseManager::insertDefaultData()
     query.bindValue(":content", "北京地铁在建线路11条线（段）盾构法施工区间占比68%");
     query.bindValue(":createdBy", 1);
     if (!query.exec()) {
-        qWarning() << "插入新闻失败:" << query.lastError().text();
+        qWarning() << "插入新闻1失败:" << query.lastError().text();
+    }
+    
+    query.bindValue(":content", "甘肃天陇铁路柳林隧道正洞掘进破万米大关");
+    query.bindValue(":createdBy", 1);
+    if (!query.exec()) {
+        qWarning() << "插入新闻2失败:" << query.lastError().text();
+    }
+    
+    query.bindValue(":content", "宜兴高铁长岗岭隧道顺利贯通");
+    query.bindValue(":createdBy", 1);
+    if (!query.exec()) {
+        qWarning() << "插入新闻3失败:" << query.lastError().text();
+    }
+    
+    query.bindValue(":content", "云兰高速全线12座隧道贯通");
+    query.bindValue(":createdBy", 1);
+    if (!query.exec()) {
+        qWarning() << "插入新闻4失败:" << query.lastError().text();
     }
     
     qDebug() << "默认数据插入完成";
