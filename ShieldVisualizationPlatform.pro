@@ -16,11 +16,15 @@ SOURCES += \
     src/ui/projectmanagementwindow.cpp \
     src/ui/geological2dwidget.cpp \
     src/utils/stylehelper.cpp \
+    src/utils/DataImportTool.cpp \
+    src/utils/GeoDataImporter.cpp \
     src/database/DatabaseManager.cpp \
     src/database/UserDAO.cpp \
     src/database/ProjectDAO.cpp \
     src/database/WarningDAO.cpp \
     src/database/NewsDAO.cpp \
+    src/database/BoreholeDAO.cpp \
+    src/database/TunnelProfileDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
     src/models/Warning.cpp \
@@ -34,11 +38,15 @@ HEADERS += \
     src/ui/projectmanagementwindow.h \
     src/ui/geological2dwidget.h \
     src/utils/stylehelper.h \
+    src/utils/DataImportTool.h \
+    src/utils/GeoDataImporter.h \
     src/database/DatabaseManager.h \
     src/database/UserDAO.h \
     src/database/ProjectDAO.h \
     src/database/WarningDAO.h \
     src/database/NewsDAO.h \
+    src/database/BoreholeDAO.h \
+    src/database/TunnelProfileDAO.h \
     src/models/User.h \
     src/models/Project.h \
     src/models/Warning.h \

@@ -2,6 +2,7 @@
 #include "mainmenuwindow.h"
 #include "geological2dwidget.h"
 #include "../utils/stylehelper.h"
+#include "../database/BoreholeDAO.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -15,6 +16,8 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QIcon>
+#include <QMap>
+#include <algorithm>
 
 ProjectWindow::ProjectWindow(const QString &projectName, QWidget *parent)
     : QMainWindow(parent)
@@ -397,11 +400,13 @@ void ProjectWindow::load2DView()
     pieChartWidget->setFixedSize(200, 150);
     pieChartWidget->setStyleSheet("background-color: white; border: 1px solid #cccccc; border-radius: 5px;");
     
-    QLabel *pieTitle = new QLabel("地层占比", pieChartWidget);
+    QLabel *pieTitle = new QLabel(QString::fromUtf8("地层占比"), pieChartWidget);
     pieTitle->setStyleSheet("font-size: 12px; font-weight: bold;");
     pieTitle->setGeometry(70, 10, 60, 20);
     
-    QLabel *pieContent = new QLabel("粉砂 32.7%\n中砂 36.8%\n�ite岩 30.5%", pieChartWidget);
+    // 创建地层占比标签（从数据库动态计算）
+    pieContent = new QLabel(pieChartWidget);
+    pieContent->setText(calculateLayerProportions());
     pieContent->setStyleSheet("font-size: 11px;");
     pieContent->setGeometry(60, 50, 100, 80);
     
@@ -1097,4 +1102,59 @@ void ProjectWindow::onBackClicked()
 {
     emit backToDashboard();  // 发射返回信号
     this->hide();  // 隐藏而不是关闭
+}
+
+QString ProjectWindow::calculateLayerProportions()
+{
+    // 从数据库读取钻孔数据
+    BoreholeDAO dao;
+    int projectId = 1;  // 假设当前项目ID为1（实际应从项目上下文获取）
+    QVector<BoreholeData> boreholes = dao.getBoreholesByProjectId(projectId);
+    
+    if (boreholes.isEmpty()) {
+        return QString::fromUtf8("暂无数据");
+    }
+    
+    // 统计各地层的总厚度
+    QMap<QString, double> layerThickness;
+    double totalThickness = 0.0;
+    
+    for (const auto &borehole : boreholes) {
+        for (const auto &layer : borehole.layers) {
+            QString layerName = layer.rockName;
+            if (layerName.isEmpty()) {
+                layerName = layer.layerCode;
+            }
+            
+            layerThickness[layerName] += layer.thickness;
+            totalThickness += layer.thickness;
+        }
+    }
+    
+    if (totalThickness < 0.01) {
+        return QString::fromUtf8("数据计算中...");
+    }
+    
+    // 按厚度排序，取前3个
+    QList<QPair<QString, double>> sortedLayers;
+    for (auto it = layerThickness.begin(); it != layerThickness.end(); ++it) {
+        sortedLayers.append(qMakePair(it.key(), it.value()));
+    }
+    
+    std::sort(sortedLayers.begin(), sortedLayers.end(), 
+              [](const QPair<QString, double> &a, const QPair<QString, double> &b) {
+                  return a.second > b.second;
+              });
+    
+    // 构建显示字符串（前3个地层）
+    QString result;
+    int count = qMin(3, sortedLayers.size());
+    for (int i = 0; i < count; i++) {
+        double percentage = (sortedLayers[i].second / totalThickness) * 100.0;
+        result += QString::fromUtf8("%1: %2%\n")
+                      .arg(sortedLayers[i].first)
+                      .arg(QString::number(percentage, 'f', 1));
+    }
+    
+    return result.trimmed();
 }

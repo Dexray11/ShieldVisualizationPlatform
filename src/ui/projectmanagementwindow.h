@@ -27,6 +27,7 @@ private slots:
     void onDeleteSelectedNews();
     void onEditNews(int row);
     void onDeleteNews(int row);
+    void onImportGeoData();  // 导入地质数据槽函数
 
 private:
     void setupUI();

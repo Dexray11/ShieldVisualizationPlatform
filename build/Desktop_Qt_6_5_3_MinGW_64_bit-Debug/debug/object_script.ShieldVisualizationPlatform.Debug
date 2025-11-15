@@ -6,11 +6,15 @@ debug/projectwindow.o
 debug/projectmanagementwindow.o
 debug/geological2dwidget.o
 debug/stylehelper.o
+debug/DataImportTool.o
+debug/GeoDataImporter.o
 debug/DatabaseManager.o
 debug/UserDAO.o
 debug/ProjectDAO.o
 debug/WarningDAO.o
 debug/NewsDAO.o
+debug/BoreholeDAO.o
+debug/TunnelProfileDAO.o
 debug/User.o
 debug/Project.o
 debug/Warning.o
@@ -22,3 +26,5 @@ debug/moc_dashboardwindow.o
 debug/moc_projectwindow.o
 debug/moc_projectmanagementwindow.o
 debug/moc_geological2dwidget.o
+debug/moc_DataImportTool.o
+debug/moc_GeoDataImporter.o

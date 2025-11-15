@@ -1,6 +1,7 @@
 #include "projectmanagementwindow.h"
 #include "mainmenuwindow.h"
 #include "../utils/stylehelper.h"
+#include "../utils/GeoDataImporter.h"
 #include "../database/ProjectDAO.h"
 #include "../database/WarningDAO.h"
 #include "../database/NewsDAO.h"
@@ -257,6 +258,14 @@ void ProjectManagementWindow::createProjectOverviewTab()
     newProjectButton->setMinimumHeight(40);
     connect(newProjectButton, &QPushButton::clicked, this, &ProjectManagementWindow::onNewProjectClicked);
     topLayout->addWidget(newProjectButton);
+    
+    // 添加"导入地质数据"按钮
+    QPushButton *importGeoDataButton = new QPushButton("📊 导入地质数据", topWidget);
+    importGeoDataButton->setStyleSheet(StyleHelper::getButtonStyle() + " QPushButton { background-color: #2196F3; }");
+    importGeoDataButton->setMinimumHeight(40);
+    importGeoDataButton->setToolTip("为选中的项目导入钻孔数据和隧道轮廓数据");
+    connect(importGeoDataButton, &QPushButton::clicked, this, &ProjectManagementWindow::onImportGeoData);
+    topLayout->addWidget(importGeoDataButton);
 
     // 项目表格
     projectTable = new QTableWidget(0, 8, tab);
@@ -1083,4 +1092,70 @@ void ProjectManagementWindow::onDeleteNews(int row)
             QMessageBox::critical(this, "错误", "删除新闻失败：" + newsDAO.getLastError());
         }
     }
+}
+
+void ProjectManagementWindow::onImportGeoData()
+{
+    // 获取选中的项目
+    QList<QTableWidgetItem*> selectedItems = projectTable->selectedItems();
+    if (selectedItems.isEmpty()) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setWindowTitle(QString::fromUtf8("提示"));
+        msgBox.setText(QString::fromUtf8("请先选择一个项目！"));
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: #0078d4; color: white; "
+                            "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    // 获取选中行的第一列（项目名称）
+    int row = projectTable->selectedItems().first()->row();
+    QString projectName = projectTable->item(row, 0)->text();
+    
+    // 从数据库获取项目ID
+    ProjectDAO projectDAO;
+    QVector<Project> projects = projectDAO.getAllProjects();
+    int projectId = -1;
+    
+    for (const auto &project : projects) {
+        if (project.getProjectName() == projectName) {
+            projectId = project.getProjectId();
+            break;
+        }
+    }
+    
+    if (projectId == -1) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle(QString::fromUtf8("错误"));
+        msgBox.setText(QString::fromUtf8("未找到项目ID"));
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: #0078d4; color: white; "
+                            "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    // 创建并显示导入对话框
+    GeoDataImporter *importer = new GeoDataImporter(projectId, projectName, this);
+    
+    // 连接信号
+    connect(importer, &GeoDataImporter::importCompleted, [this]() {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setWindowTitle(QString::fromUtf8("成功"));
+        msgBox.setText(QString::fromUtf8("地质数据导入完成！"));
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: #0078d4; color: white; "
+                            "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        loadProjectData();  // 重新加载数据
+    });
+    
+    importer->show();
 }

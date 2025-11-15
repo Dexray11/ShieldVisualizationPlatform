@@ -1,4 +1,5 @@
 #include "geological2dwidget.h"
+#include "../database/BoreholeDAO.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QFile>
@@ -19,17 +20,17 @@ Geological2DWidget::Geological2DWidget(QWidget *parent)
     setMinimumSize(800, 400);
     setStyleSheet("background-color: white;");
     
-    // 初始化地层颜色
-    layerColors["①"] = QColor(139, 69, 19);      // 素填土 - 棕色
-    layerColors["⑯9"] = QColor(205, 133, 63);    // 强风化安山岩 - 浅棕
-    layerColors["⑰9"] = QColor(160, 160, 160);   // 中风化安山岩 - 灰色
-    layerColors["⑱9"] = QColor(128, 128, 128);   // 微风化安山岩 - 深灰
-    layerColors["⑱93"] = QColor(105, 105, 105);  // 微风化安山岩(碎裂状) - 更深灰
-    layerColors["②4"] = QColor(210, 180, 140);   // 粉质黏土 - 棕褐
-    layerColors["③8"] = QColor(244, 164, 96);    // 残积砂质黏性土 - 橙棕
+    // 初始化地层颜色 - 使用岩石名称作为key（更稳定可靠）
+    layerColors[QString::fromUtf8("素填土")] = QColor(139, 69, 19);           // 深棕色
+    layerColors[QString::fromUtf8("强风化安山岩")] = QColor(220, 20, 60);    // 深红色
+    layerColors[QString::fromUtf8("中风化安山岩")] = QColor(70, 130, 180);   // 钢蓝色
+    layerColors[QString::fromUtf8("微风化安山岩")] = QColor(47, 79, 79);     // 深青灰
+    layerColors[QString::fromUtf8("微风化安山岩(碎裂状)")] = QColor(25, 25, 25);  // 深黑灰
+    layerColors[QString::fromUtf8("粉质黏土")] = QColor(210, 180, 140);      // 棕褐色
+    layerColors[QString::fromUtf8("残积砂质黏性土")] = QColor(244, 164, 96);  // 橙棕色
     
     // 默认颜色
-    layerColors["default"] = QColor(200, 200, 200);
+    layerColors[QString::fromUtf8("default")] = QColor(200, 200, 200);
 }
 
 Geological2DWidget::~Geological2DWidget()
@@ -38,139 +39,52 @@ Geological2DWidget::~Geological2DWidget()
 
 void Geological2DWidget::loadBoreholeData(const QString &excelPath)
 {
-    // 由于Qt没有内置Excel读取，这里使用硬编码数据
-    // 实际项目中应使用QXlsx或其他库
+    Q_UNUSED(excelPath);  // 不再从Excel读取
     
     boreholes.clear();
     
-    // 从Excel数据中提取的钻孔信息
-    // 钻孔1: M8ZZ3-TQD-2
-    Borehole bh1;
-    bh1.id = 1;
-    bh1.code = "M8ZZ3-TQD-2";
-    bh1.x = 124559.16;
-    bh1.y = 214931.465;
-    bh1.surfaceElevation = 22.53;
-    bh1.mileage = 2540.4;
+    // 从数据库读取钻孔数据
+    // 假设当前项目ID为1（实际应用中应从项目上下文获取）
+    int projectId = 1;
     
-    BoreholeLayer l1;
-    l1.layerCode = "①"; l1.rockName = "素填土";
-    l1.topElevation = 22.53; l1.bottomElevation = 21.53; l1.thickness = 1.0;
-    bh1.layers.append(l1);
+    BoreholeDAO dao;
+    QVector<BoreholeData> dbBoreholes = dao.getBoreholesByProjectId(projectId);
     
-    BoreholeLayer l2;
-    l2.layerCode = "⑯9"; l2.rockName = "强风化安山岩";
-    l2.topElevation = 21.53; l2.bottomElevation = 17.93; l2.thickness = 3.6;
-    bh1.layers.append(l2);
+    if (dbBoreholes.isEmpty()) {
+        qWarning() << "未找到项目" << projectId << "的钻孔数据";
+        dataLoaded = false;
+        update();
+        return;
+    }
     
-    BoreholeLayer l3;
-    l3.layerCode = "⑰9"; l3.rockName = "中风化安山岩";
-    l3.topElevation = 17.93; l3.bottomElevation = 16.53; l3.thickness = 1.4;
-    bh1.layers.append(l3);
+    qDebug() << "从数据库加载了" << dbBoreholes.size() << "个钻孔";
     
-    BoreholeLayer l4;
-    l4.layerCode = "⑱93"; l4.rockName = "微风化安山岩(碎裂状)";
-    l4.topElevation = 16.53; l4.bottomElevation = 8.53; l4.thickness = 8.0;
-    bh1.layers.append(l4);
-    
-    boreholes.append(bh1);
-    
-    // 钻孔2: M8ZZ3-TQD-3
-    Borehole bh2;
-    bh2.id = 2;
-    bh2.code = "M8ZZ3-TQD-3";
-    bh2.x = 124541.523;
-    bh2.y = 214885.046;
-    bh2.surfaceElevation = 24.05;
-    bh2.mileage = 2590.1;
-    
-    l1.layerCode = "①"; l1.rockName = "素填土";
-    l1.topElevation = 24.05; l1.bottomElevation = 22.45; l1.thickness = 1.6;
-    bh2.layers.append(l1);
-    
-    l2.layerCode = "⑯9"; l2.rockName = "强风化安山岩";
-    l2.topElevation = 22.45; l2.bottomElevation = 21.45; l2.thickness = 1.0;
-    bh2.layers.append(l2);
-    
-    l3.layerCode = "⑰9"; l3.rockName = "中风化安山岩";
-    l3.topElevation = 21.45; l3.bottomElevation = 20.05; l3.thickness = 1.4;
-    bh2.layers.append(l3);
-    
-    l4.layerCode = "⑱9"; l4.rockName = "微风化安山岩";
-    l4.topElevation = 20.05; l4.bottomElevation = 7.05; l4.thickness = 13.0;
-    bh2.layers.append(l4);
-    
-    boreholes.append(bh2);
-    
-    // 钻孔3
-    Borehole bh3;
-    bh3.id = 3;
-    bh3.code = "M8ZZ3-TQD-4";
-    bh3.x = 124520.0;
-    bh3.y = 214840.0;
-    bh3.surfaceElevation = 23.20;
-    bh3.mileage = 2640.0;
-    
-    l1.topElevation = 23.20; l1.bottomElevation = 21.80; l1.thickness = 1.4;
-    bh3.layers.append(l1);
-    
-    l2.topElevation = 21.80; l2.bottomElevation = 19.50; l2.thickness = 2.3;
-    bh3.layers.append(l2);
-    
-    l3.topElevation = 19.50; l3.bottomElevation = 17.80; l3.thickness = 1.7;
-    bh3.layers.append(l3);
-    
-    l4.layerCode = "⑱9"; l4.rockName = "微风化安山岩";
-    l4.topElevation = 17.80; l4.bottomElevation = 6.20; l4.thickness = 11.6;
-    bh3.layers.append(l4);
-    
-    boreholes.append(bh3);
-    
-    // 钻孔4
-    Borehole bh4;
-    bh4.id = 4;
-    bh4.code = "M8ZZ3-TQD-5";
-    bh4.x = 124500.0;
-    bh4.y = 214795.0;
-    bh4.surfaceElevation = 22.80;
-    bh4.mileage = 2690.0;
-    
-    l1.topElevation = 22.80; l1.bottomElevation = 21.60; l1.thickness = 1.2;
-    bh4.layers.append(l1);
-    
-    l2.topElevation = 21.60; l2.bottomElevation = 18.90; l2.thickness = 2.7;
-    bh4.layers.append(l2);
-    
-    l3.topElevation = 18.90; l3.bottomElevation = 16.50; l3.thickness = 2.4;
-    bh4.layers.append(l3);
-    
-    l4.topElevation = 16.50; l4.bottomElevation = 5.80; l4.thickness = 10.7;
-    bh4.layers.append(l4);
-    
-    boreholes.append(bh4);
-    
-    // 钻孔5
-    Borehole bh5;
-    bh5.id = 5;
-    bh5.code = "M8ZZ3-TQD-6";
-    bh5.x = 124480.0;
-    bh5.y = 214750.0;
-    bh5.surfaceElevation = 22.40;
-    bh5.mileage = 2740.0;
-    
-    l1.topElevation = 22.40; l1.bottomElevation = 21.20; l1.thickness = 1.2;
-    bh5.layers.append(l1);
-    
-    l2.topElevation = 21.20; l2.bottomElevation = 18.00; l2.thickness = 3.2;
-    bh5.layers.append(l2);
-    
-    l3.topElevation = 18.00; l3.bottomElevation = 15.80; l3.thickness = 2.2;
-    bh5.layers.append(l3);
-    
-    l4.topElevation = 15.80; l4.bottomElevation = 5.40; l4.thickness = 10.4;
-    bh5.layers.append(l4);
-    
-    boreholes.append(bh5);
+    // 将数据库数据转换为界面使用的数据结构
+    for (const auto &dbBh : dbBoreholes) {
+        Borehole bh;
+        bh.id = dbBh.boreholeId;
+        bh.code = dbBh.boreholeCode;
+        bh.x = dbBh.x;
+        bh.y = dbBh.y;
+        bh.surfaceElevation = dbBh.surfaceElevation;
+        bh.mileage = dbBh.mileage;
+        
+        // 转换地层数据
+        for (const auto &dbLayer : dbBh.layers) {
+            BoreholeLayer layer;
+            layer.layerCode = dbLayer.layerCode;
+            layer.rockName = dbLayer.rockName;
+            layer.bottomElevation = dbLayer.bottomElevation;
+            layer.thickness = dbLayer.thickness;
+            
+            // 计算顶部标高（底部标高 + 厚度）
+            layer.topElevation = dbLayer.bottomElevation + dbLayer.thickness;
+            
+            bh.layers.append(layer);
+        }
+        
+        boreholes.append(bh);
+    }
     
     // 计算范围
     if (!boreholes.isEmpty()) {
@@ -203,11 +117,14 @@ void Geological2DWidget::loadBoreholeData(const QString &excelPath)
     shieldBottomZ = 11.0;
     
     dataLoaded = true;
+    qDebug() << "钻孔数据加载完成，里程范围:" << minMileage << "~" << maxMileage;
+    qDebug() << "高程范围:" << minElevation << "~" << maxElevation;
     update();
 }
 
 void Geological2DWidget::loadTunnelData(const QString &excelPath)
 {
+    Q_UNUSED(excelPath);
     // 隧道数据已在钻孔数据中考虑
     // 这里可以加载更详细的隧道线形数据
 }
@@ -231,12 +148,12 @@ double Geological2DWidget::worldToScreenY(double elevation)
     return marginTop + (maxElevation - elevation) / (maxElevation - minElevation) * drawHeight;
 }
 
-QColor Geological2DWidget::getLayerColor(const QString &layerCode)
+QColor Geological2DWidget::getLayerColor(const QString &rockName)
 {
-    if (layerColors.contains(layerCode)) {
-        return layerColors[layerCode];
+    if (layerColors.contains(rockName)) {
+        return layerColors[rockName];
     }
-    return layerColors["default"];
+    return layerColors[QString::fromUtf8("default")];
 }
 
 void Geological2DWidget::paintEvent(QPaintEvent *event)
@@ -328,12 +245,16 @@ void Geological2DWidget::drawGeologicalLayers(QPainter &painter)
     std::sort(sortedBH.begin(), sortedBH.end(), 
               [](const Borehole &a, const Borehole &b) { return a.mileage < b.mileage; });
     
-    // 找出所有地层类型
+    // 找出所有地层类型（使用rockName）
     QStringList layerTypes;
-    layerTypes << "①" << "⑯9" << "⑰9" << "⑱9" << "⑱93";
+    layerTypes << QString::fromUtf8("素填土") 
+               << QString::fromUtf8("强风化安山岩") 
+               << QString::fromUtf8("中风化安山岩") 
+               << QString::fromUtf8("微风化安山岩")
+               << QString::fromUtf8("微风化安山岩(碎裂状)");
     
     // 为每个地层绘制连续的多边形
-    for (const QString &layerCode : layerTypes) {
+    for (const QString &rockName : layerTypes) {
         QPolygonF polygon;
         bool hasLayer = false;
         
@@ -342,7 +263,7 @@ void Geological2DWidget::drawGeologicalLayers(QPainter &painter)
         
         for (const auto &bh : sortedBH) {
             for (const auto &layer : bh.layers) {
-                if (layer.layerCode == layerCode) {
+                if (layer.rockName == rockName) {  // 改用rockName匹配
                     layerBounds.append(qMakePair(bh.mileage, 
                                                   qMakePair(layer.topElevation, layer.bottomElevation)));
                     hasLayer = true;
@@ -368,8 +289,8 @@ void Geological2DWidget::drawGeologicalLayers(QPainter &painter)
             polygon << QPointF(x, y);
         }
         
-        // 填充地层
-        QColor fillColor = getLayerColor(layerCode);
+        // 填充地层（使用rockName获取颜色）
+        QColor fillColor = getLayerColor(rockName);
         fillColor.setAlpha(180);
         painter.setBrush(QBrush(fillColor));
         painter.setPen(QPen(fillColor.darker(120), 1));
@@ -516,46 +437,79 @@ void Geological2DWidget::drawScale(QPainter &painter)
 
 void Geological2DWidget::drawLegend(QPainter &painter)
 {
-    int legendX = width() - 180;
-    int legendY = marginTop + 10;
-    int boxSize = 15;
-    int spacing = 20;
+    // 图例尺寸参数优化
+    int boxSize = 16;      // 缩小颜色方块 20→16
+    int spacing = 22;      // 减小间距 28→22
+    int padding = 10;      // 内边距
+    int titleHeight = 25;  // 标题高度
     
-    // 图例背景
-    painter.fillRect(legendX - 10, legendY - 5, 175, 130, QColor(255, 255, 255, 230));
-    painter.setPen(QPen(QColor("#cccccc"), 1));
-    painter.drawRect(legendX - 10, legendY - 5, 175, 130);
+    // 计算图例框尺寸
+    int itemCount = 5;  // 4个地层 + 1个隧道
+    int legendWidth = 160;  // 缩小宽度 195→160
+    int legendHeight = titleHeight + itemCount * spacing + padding;
     
-    painter.setFont(QFont("Microsoft YaHei", 9, QFont::Bold));
+    // 图例位置 - 改到右下角，避免遮挡主要内容
+    int legendX = width() - legendWidth - 20;
+    int legendY = height() - legendHeight - marginBottom - 10;
+    
+    // 保存painter状态
+    painter.save();
+    
+    // 图例背景 - 白色填充
+    painter.setBrush(Qt::white);
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(legendX, legendY, legendWidth, legendHeight);
+    
+    // 绘制边框
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(100, 100, 100), 2));
+    painter.drawRect(legendX, legendY, legendWidth, legendHeight);
+    
+    // 标题
+    painter.setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
     painter.setPen(Qt::black);
-    painter.drawText(legendX, legendY + 12, "图例");
+    painter.drawText(legendX + padding, legendY + 18, QString::fromUtf8("图例"));
     
-    legendY += spacing;
+    // 内容起始位置
+    int contentY = legendY + titleHeight + 5;
+    int contentX = legendX + padding;
     
-    painter.setFont(QFont("Microsoft YaHei", 8));
+    // 内容字体
+    painter.setFont(QFont("Microsoft YaHei", 9));
     
     // 地层图例
-    QMap<QString, QString> layerNames;
-    layerNames["①"] = "素填土";
-    layerNames["⑯9"] = "强风化安山岩";
-    layerNames["⑰9"] = "中风化安山岩";
-    layerNames["⑱9"] = "微风化安山岩";
-    layerNames["⑱93"] = "微风化安山岩(碎裂)";
+    struct LegendItem {
+        QString name;
+        QColor color;
+    };
     
-    QStringList order = {"①", "⑯9", "⑰9", "⑱9"};
+    QVector<LegendItem> legendItems;
+    legendItems.append({QString::fromUtf8("素填土"), QColor(139, 69, 19)});
+    legendItems.append({QString::fromUtf8("强风化安山岩"), QColor(220, 20, 60)});
+    legendItems.append({QString::fromUtf8("中风化安山岩"), QColor(70, 130, 180)});
+    legendItems.append({QString::fromUtf8("微风化安山岩"), QColor(47, 79, 79)});
     
-    for (const QString &code : order) {
-        QColor color = getLayerColor(code);
-        color.setAlpha(180);
-        painter.fillRect(legendX, legendY, boxSize, boxSize, color);
+    for (const auto &item : legendItems) {
+        // 绘制颜色方块
+        painter.setBrush(item.color);
+        painter.setPen(QPen(Qt::black, 1));
+        painter.drawRect(contentX, contentY, boxSize, boxSize);
+        
+        // 绘制图例文字
         painter.setPen(Qt::black);
-        painter.drawRect(legendX, legendY, boxSize, boxSize);
-        painter.drawText(legendX + boxSize + 5, legendY + 12, layerNames[code]);
-        legendY += spacing;
+        painter.drawText(contentX + boxSize + 6, contentY + 12, item.name);
+        contentY += spacing;
     }
     
     // 隧道图例
     painter.setPen(QPen(QColor("#1565C0"), 2));
-    painter.drawRect(legendX, legendY, boxSize, boxSize);
-    painter.drawText(legendX + boxSize + 5, legendY + 12, "隧道断面");
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(contentX, contentY, boxSize, boxSize);
+    painter.setPen(Qt::black);
+    painter.drawText(contentX + boxSize + 6, contentY + 12, QString::fromUtf8("隧道断面"));
+    
+    // 恢复painter状态
+    painter.restore();
 }
+
+

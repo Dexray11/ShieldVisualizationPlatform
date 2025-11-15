@@ -270,6 +270,87 @@ bool DatabaseManager::createTables()
     
     qDebug() << "news表创建成功";
     
+    // 创建钻孔表
+    QString createBoreholesTable = R"(
+        CREATE TABLE IF NOT EXISTS boreholes (
+            borehole_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            borehole_code VARCHAR(50) NOT NULL,
+            x_coordinate REAL,
+            y_coordinate REAL,
+            surface_elevation REAL,
+            mileage REAL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createBoreholesTable)) {
+        lastError = "创建boreholes表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "boreholes表创建成功";
+    
+    // 创建钻孔地层表
+    QString createBoreholLayersTable = R"(
+        CREATE TABLE IF NOT EXISTS borehole_layers (
+            layer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            borehole_id INTEGER NOT NULL,
+            layer_number INTEGER,
+            layer_code VARCHAR(20),
+            era_genesis VARCHAR(50),
+            rock_name VARCHAR(100),
+            bottom_elevation REAL,
+            bottom_depth REAL,
+            thickness REAL,
+            characteristics TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (borehole_id) REFERENCES boreholes(borehole_id)
+        )
+    )";
+    
+    if (!query.exec(createBoreholLayersTable)) {
+        lastError = "创建borehole_layers表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "borehole_layers表创建成功";
+    
+    // 创建隧道轮廓表
+    QString createTunnelProfilesTable = R"(
+        CREATE TABLE IF NOT EXISTS tunnel_profiles (
+            profile_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            near_borehole VARCHAR(50),
+            mileage REAL,
+            top_left_x REAL,
+            top_left_y REAL,
+            top_left_z REAL,
+            bottom_left_x REAL,
+            bottom_left_y REAL,
+            bottom_left_z REAL,
+            top_right_x REAL,
+            top_right_y REAL,
+            top_right_z REAL,
+            bottom_right_x REAL,
+            bottom_right_y REAL,
+            bottom_right_z REAL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createTunnelProfilesTable)) {
+        lastError = "创建tunnel_profiles表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "tunnel_profiles表创建成功";
+    
     return true;
 }
 

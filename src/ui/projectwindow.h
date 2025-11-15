@@ -60,6 +60,12 @@ private:
     // 定位输入
     QLineEdit *coordsInput;
     QLineEdit *stakeInput;
+    
+    // 地层占比标签
+    QLabel *pieContent;
+    
+    // 计算地层占比
+    QString calculateLayerProportions();
 };
 
 #endif // PROJECTWINDOW_H

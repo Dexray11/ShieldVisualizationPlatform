@@ -61,7 +61,7 @@ private:
     void drawLegend(QPainter &painter);
     void drawScale(QPainter &painter);
     
-    QColor getLayerColor(const QString &layerCode);
+    QColor getLayerColor(const QString &rockName);
     QString getLayerPattern(const QString &layerCode);
     
     double worldToScreenX(double worldX);
