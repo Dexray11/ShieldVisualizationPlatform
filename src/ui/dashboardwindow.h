@@ -11,6 +11,8 @@
 #include <QHBoxLayout>
 #include <QMap>
 #include <QListWidgetItem>
+#include <QFrame>
+#include "mapwidget.h"
 
 class DashboardWindow : public QMainWindow
 {
@@ -22,11 +24,14 @@ public:
 
 private slots:
     void onProjectSelected(int row, int column);
-    void onProjectMarkerClicked(const QString &projectName);
+    void onProjectMarkerClicked(const QString &projectName, const QString &brief,
+                               const QString &unit, const QPoint &screenPos);
+    void onProjectMarkerDoubleClicked(const QString &projectName);
     void onWorkbenchClicked();
     void openProjectView();
     void onProjectListItemClicked(QListWidgetItem *item);
     void onProjectListItemDoubleClicked(QListWidgetItem *item);
+    void hideProjectInfoPopup();
 
 private:
     void setupUI();
@@ -51,9 +56,13 @@ private:
     QListWidget *projectList;
     
     // 地图区域
-    QWidget *mapWidget;
-    QLabel *mapLabel;
-    QMap<QString, QPoint> projectMarkers;  // 项目标记位置
+    MapWidget *mapWidget;
+    
+    // 项目信息弹窗
+    QFrame *projectInfoPopup;
+    QLabel *popupNameLabel;
+    QLabel *popupBriefLabel;
+    QLabel *popupUnitLabel;
     
     // 项目列表表格
     QTableWidget *projectTable;

@@ -247,7 +247,7 @@ void DashboardWindow::createSidebar()
 
 void DashboardWindow::createMapView()
 {
-    mapWidget = new QWidget(centralWidget);
+    mapWidget = new MapWidget(centralWidget);
     mapWidget->setMinimumHeight(400);
     mapWidget->setStyleSheet(QString(R"(
         QWidget {
@@ -256,26 +256,54 @@ void DashboardWindow::createMapView()
             border: 1px solid %1;
         }
     )").arg(StyleHelper::COLOR_BORDER));
-
-    QVBoxLayout *mapLayout = new QVBoxLayout(mapWidget);
-
-    mapLabel = new QLabel(mapWidget);
-    mapLabel->setAlignment(Qt::AlignCenter);
-
-    QPixmap mapPixmap(":/images/map_qingdao.png");
-    if (!mapPixmap.isNull()) {
-        mapLabel->setPixmap(mapPixmap.scaled(800, 500, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        QPixmap placeholder(800, 500);
-        placeholder.fill(QColor("#e0e0e0"));
-        QPainter painter(&placeholder);
-        painter.setPen(QPen(QColor(StyleHelper::COLOR_SECONDARY), 2));
-        painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "后期导入地图api");
-        mapLabel->setPixmap(placeholder);
-    }
-
-    mapLayout->addWidget(mapLabel);
+    
+    // 连接地图标记点击信号
+    connect(mapWidget, &MapWidget::projectMarkerClicked,
+            this, &DashboardWindow::onProjectMarkerClicked);
+    connect(mapWidget, &MapWidget::projectMarkerDoubleClicked,
+            this, &DashboardWindow::onProjectMarkerDoubleClicked);
+    
+    // 连接地图空白区域点击信号 - 用于关闭弹窗
+    connect(mapWidget, &MapWidget::mapAreaClicked,
+            this, &DashboardWindow::hideProjectInfoPopup);
+    
+    // 创建项目信息弹窗
+    projectInfoPopup = new QFrame(mapWidget);
+    projectInfoPopup->setFrameStyle(QFrame::Box | QFrame::Raised);
+    projectInfoPopup->setLineWidth(2);
+    projectInfoPopup->setStyleSheet(QString(R"(
+        QFrame {
+            background-color: white;
+            border: 2px solid %1;
+            border-radius: 8px;
+            padding: 10px;
+        }
+    )").arg(StyleHelper::COLOR_PRIMARY));
+    projectInfoPopup->setFixedWidth(300);
+    projectInfoPopup->hide();
+    
+    QVBoxLayout *popupLayout = new QVBoxLayout(projectInfoPopup);
+    popupLayout->setSpacing(8);
+    
+    popupNameLabel = new QLabel(projectInfoPopup);
+    popupNameLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #1976D2;");
+    popupNameLabel->setWordWrap(true);
+    
+    popupBriefLabel = new QLabel(projectInfoPopup);
+    popupBriefLabel->setStyleSheet("font-size: 12px; color: #666;");
+    popupBriefLabel->setWordWrap(true);
+    
+    popupUnitLabel = new QLabel(projectInfoPopup);
+    popupUnitLabel->setStyleSheet("font-size: 12px; color: #666;");
+    popupUnitLabel->setWordWrap(true);
+    
+    QLabel *tipLabel = new QLabel("双击进入项目详情", projectInfoPopup);
+    tipLabel->setStyleSheet("font-size: 11px; color: #999; font-style: italic;");
+    
+    popupLayout->addWidget(popupNameLabel);
+    popupLayout->addWidget(popupBriefLabel);
+    popupLayout->addWidget(popupUnitLabel);
+    popupLayout->addWidget(tipLabel);
 }
 
 void DashboardWindow::createProjectList()
@@ -375,10 +403,48 @@ void DashboardWindow::onProjectSelected(int row, int column)
     }
 }
 
-void DashboardWindow::onProjectMarkerClicked(const QString &projectName)
+void DashboardWindow::onProjectMarkerClicked(const QString &projectName, const QString &brief,
+                                            const QString &unit, const QPoint &screenPos)
 {
+    // 显示项目信息弹窗
+    popupNameLabel->setText("项目: " + projectName);
+    popupBriefLabel->setText("简介: " + brief);
+    popupUnitLabel->setText("施工单位: " + unit);
+    
+    // 调整弹窗大小
+    projectInfoPopup->adjustSize();
+    
+    // 计算弹窗位置（在标记下方）
+    int popupX = screenPos.x() - projectInfoPopup->width() / 2;
+    int popupY = screenPos.y() + 10;
+    
+    // 确保弹窗在可见范围内
+    if (popupX < 10) popupX = 10;
+    if (popupX + projectInfoPopup->width() > mapWidget->width() - 10) {
+        popupX = mapWidget->width() - projectInfoPopup->width() - 10;
+    }
+    if (popupY + projectInfoPopup->height() > mapWidget->height() - 10) {
+        popupY = screenPos.y() - projectInfoPopup->height() - 40;
+    }
+    
+    projectInfoPopup->move(popupX, popupY);
+    projectInfoPopup->show();
+    projectInfoPopup->raise();
+    
+    // 记录当前选中的项目
+    selectedProject = projectName;
+}
+
+void DashboardWindow::onProjectMarkerDoubleClicked(const QString &projectName)
+{
+    hideProjectInfoPopup();
     selectedProject = projectName;
     openProjectView();
+}
+
+void DashboardWindow::hideProjectInfoPopup()
+{
+    projectInfoPopup->hide();
 }
 
 void DashboardWindow::onWorkbenchClicked()
@@ -440,6 +506,22 @@ void DashboardWindow::showAllProjects()
     
     // 从数据库获取所有活动项目
     QList<Project> projects = projectDAO.getProjectsByStatus("active");
+    
+    // 清除并重新加载地图标记
+    mapWidget->clearMarkers();
+    for (const Project &project : projects) {
+        // 只有当项目有有效的经纬度坐标时才添加标记
+        if (project.getLatitude() != 0.0 || project.getLongitude() != 0.0) {
+            mapWidget->addProjectMarker(project.getProjectName(), 
+                                       project.getBrief(),
+                                       project.getConstructionUnit(),
+                                       project.getLatitude(), 
+                                       project.getLongitude());
+        }
+    }
+    
+    // 隐藏项目信息弹窗
+    hideProjectInfoPopup();
     
     // 设置表格行数
     projectTable->setRowCount(projects.size());

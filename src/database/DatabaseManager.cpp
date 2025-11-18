@@ -408,8 +408,8 @@ bool DatabaseManager::insertDefaultData()
                   ":contact1Name, :contact1Phone, :contact2Name, :contact2Phone)");
     query.bindValue(":name", "青岛沿海公路");
     query.bindValue(":brief", "测试简介");
-    query.bindValue(":lat", 36.0671);
-    query.bindValue(":lon", 120.3826);
+    query.bindValue(":lat", 36.2);  // 崂山附近纬度
+    query.bindValue(":lon", 120.6);  // 崂山附近经度
     query.bindValue(":unit", "测试单位");
     query.bindValue(":date", "2024-11-28");
     query.bindValue(":progress", 66.7);

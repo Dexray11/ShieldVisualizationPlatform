@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QTableWidget>
+#include "mapwidget.h"
 
 class Geological2DWidget;
 

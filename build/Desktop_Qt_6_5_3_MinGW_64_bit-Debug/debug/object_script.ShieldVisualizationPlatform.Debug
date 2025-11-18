@@ -6,6 +6,7 @@ debug/projectwindow.o
 debug/projectmanagementwindow.o
 debug/geological2dwidget.o
 debug/geological3dwidget.o
+debug/mapwidget.o
 debug/stylehelper.o
 debug/DataImportTool.o
 debug/GeoDataImporter.o
@@ -28,5 +29,6 @@ debug/moc_projectwindow.o
 debug/moc_projectmanagementwindow.o
 debug/moc_geological2dwidget.o
 debug/moc_geological3dwidget.o
+debug/moc_mapwidget.o
 debug/moc_DataImportTool.o
 debug/moc_GeoDataImporter.o

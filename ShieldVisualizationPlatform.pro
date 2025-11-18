@@ -16,6 +16,7 @@ SOURCES += \
     src/ui/projectmanagementwindow.cpp \
     src/ui/geological2dwidget.cpp \
     src/ui/geological3dwidget.cpp \
+    src/ui/mapwidget.cpp \
     src/utils/stylehelper.cpp \
     src/utils/DataImportTool.cpp \
     src/utils/GeoDataImporter.cpp \
@@ -39,6 +40,7 @@ HEADERS += \
     src/ui/projectmanagementwindow.h \
     src/ui/geological2dwidget.h \
     src/ui/geological3dwidget.h \
+    src/ui/mapwidget.h \
     src/utils/stylehelper.h \
     src/utils/DataImportTool.h \
     src/utils/GeoDataImporter.h \

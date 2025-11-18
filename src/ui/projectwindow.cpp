@@ -264,46 +264,48 @@ void ProjectWindow::loadMapView()
     QHBoxLayout *locationLayout = new QHBoxLayout(locationWidget);
     locationLayout->setSpacing(10);
     
-    // 修复问题2：使用location.png图标，并统一高度为36px
     // 坐标输入
     QLabel *coordLabel = new QLabel(locationWidget);
     coordLabel->setPixmap(QPixmap(":/icons/location.png").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    coordLabel->setFixedSize(24, 36);  // 统一高度36px
+    coordLabel->setFixedSize(24, 36);
     coordLabel->setAlignment(Qt::AlignCenter);
     
-    coordsInput = new QLineEdit("120.36,36.23", locationWidget);
+    // 从数据库获取项目坐标
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectByName(projectName);
+    QString coordsText = QString("%1,%2").arg(project.getLongitude(), 0, 'f', 2)
+                                        .arg(project.getLatitude(), 0, 'f', 2);
+    
+    coordsInput = new QLineEdit(coordsText, locationWidget);
     coordsInput->setPlaceholderText("输入坐标");
-    coordsInput->setFixedHeight(36);  // 修复问题2：统一高度36px
+    coordsInput->setFixedHeight(36);
     coordsInput->setStyleSheet(StyleHelper::getInputStyle());
     coordsInput->setMaximumWidth(200);
     
-    // 修复问题2：使用lock.png图标作为定位按钮图标
     QPushButton *coordLocateBtn = new QPushButton(locationWidget);
     coordLocateBtn->setIcon(QIcon(":/icons/lock.png"));
     coordLocateBtn->setIconSize(QSize(16, 16));
-    coordLocateBtn->setFixedSize(36, 36);  // 修复问题2：统一高度36px
+    coordLocateBtn->setFixedSize(36, 36);
     coordLocateBtn->setStyleSheet(StyleHelper::getButtonStyle());
     coordLocateBtn->setToolTip("定位到坐标");
     
     // 桩号输入
-    // 修复问题2：使用flag.png图标
     QLabel *stakeLabel = new QLabel(locationWidget);
     stakeLabel->setPixmap(QPixmap(":/icons/flag.png").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    stakeLabel->setFixedSize(24, 36);  // 统一高度36px
+    stakeLabel->setFixedSize(24, 36);
     stakeLabel->setAlignment(Qt::AlignCenter);
     stakeLabel->setStyleSheet("margin-left: 10px;");
     
     stakeInput = new QLineEdit("K1+190.00", locationWidget);
     stakeInput->setPlaceholderText("输入桩号");
-    stakeInput->setFixedHeight(36);  // 修复问题2：统一高度36px
+    stakeInput->setFixedHeight(36);
     stakeInput->setStyleSheet(StyleHelper::getInputStyle());
     stakeInput->setMaximumWidth(200);
     
-    // 修复问题2：使用lock.png图标作为定位按钮图标
     QPushButton *stakeLocateBtn = new QPushButton(locationWidget);
     stakeLocateBtn->setIcon(QIcon(":/icons/lock.png"));
     stakeLocateBtn->setIconSize(QSize(16, 16));
-    stakeLocateBtn->setFixedSize(36, 36);  // 修复问题2：统一高度36px
+    stakeLocateBtn->setFixedSize(36, 36);
     stakeLocateBtn->setStyleSheet(StyleHelper::getButtonStyle());
     stakeLocateBtn->setToolTip("定位到桩号");
     
@@ -315,58 +317,45 @@ void ProjectWindow::loadMapView()
     locationLayout->addWidget(stakeLocateBtn);
     locationLayout->addStretch();
 
-    // 地图视图
-    QLabel *mapLabel = new QLabel(mainContent);
-    mapLabel->setMinimumSize(1000, 500);
+    // 创建真实地图视图
+    MapWidget *mapWidget = new MapWidget(mainContent);
+    mapWidget->setMinimumSize(1000, 500);
+    mapWidget->setStyleSheet("border: 2px solid #1565C0; border-radius: 8px;");
     
-    // 创建一个简单的地图占位图
-    QPixmap mapPlaceholder(1000, 500);
-    mapPlaceholder.fill(QColor("#e8f4f8"));
-    QPainter painter(&mapPlaceholder);
-    
-    // 绘制网格背景
-    painter.setPen(QPen(QColor("#d0e8f0"), 1));
-    for (int i = 0; i < mapPlaceholder.width(); i += 50) {
-        painter.drawLine(i, 0, i, mapPlaceholder.height());
+    // 设置地图中心为项目位置
+    if (project.isValid() && (project.getLatitude() != 0.0 || project.getLongitude() != 0.0)) {
+        mapWidget->setCenter(project.getLatitude(), project.getLongitude());
+        mapWidget->setZoomLevel(14); // 更近的缩放级别以查看项目
+        
+        // 添加项目标记
+        mapWidget->addProjectMarker(project.getProjectName(), 
+                                    project.getBrief(),
+                                    project.getConstructionUnit(),
+                                    project.getLatitude(), 
+                                    project.getLongitude());
     }
-    for (int i = 0; i < mapPlaceholder.height(); i += 50) {
-        painter.drawLine(0, i, mapPlaceholder.width(), i);
-    }
     
-    // 绘制隧道线
-    painter.setPen(QPen(QColor(StyleHelper::COLOR_PRIMARY), 3));
-    painter.setBrush(QBrush(QColor(StyleHelper::COLOR_PRIMARY)));
-    
-    // 绘制曲线隧道
-    QPainterPath tunnelPath;
-    tunnelPath.moveTo(100, 250);
-    tunnelPath.cubicTo(300, 200, 600, 300, 900, 250);
-    painter.drawPath(tunnelPath);
-    
-    // 绘制盾构机位置标记
-    painter.setBrush(QBrush(QColor("#ff4444")));
-    painter.setPen(QPen(QColor("#ff4444"), 2));
-    painter.drawEllipse(QPoint(500, 250), 15, 15);
-    
-    // 绘制文字说明
-    painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
-    painter.setFont(QFont("Arial", 14, QFont::Bold));
-    painter.drawText(QRect(0, 20, mapPlaceholder.width(), 30), Qt::AlignCenter, 
-                     projectName + " - 工程俯视图");
-    
-    painter.setFont(QFont("Arial", 12));
-    painter.drawText(QRect(480, 280, 100, 20), Qt::AlignCenter, "当前位置");
-    
-    mapLabel->setPixmap(mapPlaceholder);
-    mapLabel->setAlignment(Qt::AlignCenter);
+    // 连接定位按钮
+    connect(coordLocateBtn, &QPushButton::clicked, [this, mapWidget]() {
+        QStringList coords = coordsInput->text().split(',');
+        if (coords.size() == 2) {
+            bool ok1, ok2;
+            double lon = coords[0].trimmed().toDouble(&ok1);
+            double lat = coords[1].trimmed().toDouble(&ok2);
+            if (ok1 && ok2) {
+                mapWidget->setCenter(lat, lon);
+                mapWidget->setZoomLevel(15);
+            }
+        }
+    });
 
     // 添加到布局
     layout->addWidget(titleLabel);
     layout->addWidget(locationWidget);
-    layout->addWidget(mapLabel);
+    layout->addWidget(mapWidget);
     layout->addStretch();
     
-    QLabel *infoLabel = new QLabel("提示：输入坐标或桩号后点击定位按钮可将施工位置居中显示", mainContent);
+    QLabel *infoLabel = new QLabel("提示：可拖动地图查看，滚轮缩放，输入坐标后点击定位按钮可将位置居中显示", mainContent);
     infoLabel->setStyleSheet("color: #666; font-size: 12px;");
     infoLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(infoLabel);
