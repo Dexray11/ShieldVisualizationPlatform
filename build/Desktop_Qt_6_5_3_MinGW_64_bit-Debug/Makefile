@@ -356,9 +356,16 @@ Makefile: ../../ShieldVisualizationPlatform.pro ../../../../Qt/6.5.3/mingw_64/mk
 		../../../../Qt/6.5.3/mingw_64/mkspecs/features/lex.prf \
 		../../ShieldVisualizationPlatform.pro \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6Widgets.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt63DExtras.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt63DRender.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt63DInput.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt63DLogic.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt63DCore.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt6OpenGL.prl \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6Gui.prl \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6Sql.prl \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6Network.prl \
+		../../../../Qt/6.5.3/mingw_64/lib/Qt6Concurrent.prl \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6Core.prl \
 		../../../../Qt/6.5.3/mingw_64/lib/Qt6EntryPoint.prl \
 		.qmake.stash \
@@ -651,9 +658,16 @@ Makefile: ../../ShieldVisualizationPlatform.pro ../../../../Qt/6.5.3/mingw_64/mk
 ../../../../Qt/6.5.3/mingw_64/mkspecs/features/lex.prf:
 ../../ShieldVisualizationPlatform.pro:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6Widgets.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt63DExtras.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt63DRender.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt63DInput.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt63DLogic.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt63DCore.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt6OpenGL.prl:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6Gui.prl:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6Sql.prl:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6Network.prl:
+../../../../Qt/6.5.3/mingw_64/lib/Qt6Concurrent.prl:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6Core.prl:
 ../../../../Qt/6.5.3/mingw_64/lib/Qt6EntryPoint.prl:
 .qmake.stash:

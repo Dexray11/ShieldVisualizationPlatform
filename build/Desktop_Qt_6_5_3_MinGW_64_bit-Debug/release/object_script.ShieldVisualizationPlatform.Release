@@ -5,6 +5,7 @@ release/dashboardwindow.o
 release/projectwindow.o
 release/projectmanagementwindow.o
 release/geological2dwidget.o
+release/geological3dwidget.o
 release/stylehelper.o
 release/DataImportTool.o
 release/GeoDataImporter.o
@@ -26,5 +27,6 @@ release/moc_dashboardwindow.o
 release/moc_projectwindow.o
 release/moc_projectmanagementwindow.o
 release/moc_geological2dwidget.o
+release/moc_geological3dwidget.o
 release/moc_DataImportTool.o
 release/moc_GeoDataImporter.o

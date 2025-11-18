@@ -1,8 +1,10 @@
 #include "projectwindow.h"
 #include "mainmenuwindow.h"
 #include "geological2dwidget.h"
+#include "geological3dwidget.h"
 #include "../utils/stylehelper.h"
 #include "../database/BoreholeDAO.h"
+#include "../database/ProjectDAO.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -477,33 +479,21 @@ void ProjectWindow::load3DView()
     clearMainContent();
     QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(mainContent->layout());
 
-    QLabel *titleLabel = new QLabel("三维视图", mainContent);
-    titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
-                                  .arg(StyleHelper::COLOR_PRIMARY));
-
-    QLabel *imageLabel = new QLabel(mainContent);
-    imageLabel->setMinimumSize(1000, 500);
-
-    QPixmap geological3D(":/images/geological_3d.png");
-    if (!geological3D.isNull()) {
-        imageLabel->setPixmap(geological3D.scaled(1000, 600, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        // 创建占位图
-        QPixmap placeholder(1000, 600);
-        placeholder.fill(QColor("#ffffff"));
-        QPainter painter(&placeholder);
-        painter.setPen(QPen(QColor(StyleHelper::COLOR_BORDER), 2, Qt::DashLine));
-        painter.drawRect(1, 1, placeholder.width()-2, placeholder.height()-2);
-        painter.setPen(QPen(QColor(StyleHelper::COLOR_TEXT_DARK)));
-        painter.setFont(QFont("Arial", 16));
-        painter.drawText(placeholder.rect(), Qt::AlignCenter, "三维地质模型\n（请添加图片到 resources/images/geological_3d.png\n或集成3D渲染引擎）");
-        imageLabel->setPixmap(placeholder);
+    // 获取当前项目ID
+    ProjectDAO dao;
+    Project project = dao.getProjectByName(projectName);
+    
+    if (project.getProjectId() <= 0) {
+        QLabel *errorLabel = new QLabel("错误：无法加载项目数据", mainContent);
+        errorLabel->setStyleSheet(QString("font-size: 16px; color: red;"));
+        errorLabel->setAlignment(Qt::AlignCenter);
+        layout->addWidget(errorLabel);
+        return;
     }
-    imageLabel->setAlignment(Qt::AlignCenter);
-
-    layout->addWidget(titleLabel);
-    layout->addWidget(imageLabel);
-    layout->addStretch();
+    
+    // 创建3D视图widget
+    Geological3DWidget *geo3DWidget = new Geological3DWidget(project.getProjectId(), mainContent);
+    layout->addWidget(geo3DWidget);
 }
 
 void ProjectWindow::loadExcavationParams()

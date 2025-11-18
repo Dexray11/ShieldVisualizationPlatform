@@ -1,4 +1,4 @@
-QT       += core gui widgets sql network
+QT       += core gui widgets sql network 3dcore 3drender 3dinput 3dextras
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -15,6 +15,7 @@ SOURCES += \
     src/ui/projectwindow.cpp \
     src/ui/projectmanagementwindow.cpp \
     src/ui/geological2dwidget.cpp \
+    src/ui/geological3dwidget.cpp \
     src/utils/stylehelper.cpp \
     src/utils/DataImportTool.cpp \
     src/utils/GeoDataImporter.cpp \
@@ -37,6 +38,7 @@ HEADERS += \
     src/ui/projectwindow.h \
     src/ui/projectmanagementwindow.h \
     src/ui/geological2dwidget.h \
+    src/ui/geological3dwidget.h \
     src/utils/stylehelper.h \
     src/utils/DataImportTool.h \
     src/utils/GeoDataImporter.h \
