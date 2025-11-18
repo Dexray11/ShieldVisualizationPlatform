@@ -212,6 +212,9 @@ bool DatabaseManager::createTables()
             emergency_contact1_phone VARCHAR(20),
             emergency_contact2_name VARCHAR(50),
             emergency_contact2_phone VARCHAR(20),
+            current_mileage REAL DEFAULT 0,
+            start_mileage REAL DEFAULT 0,
+            end_mileage REAL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -351,6 +354,30 @@ bool DatabaseManager::createTables()
     
     qDebug() << "tunnel_profiles表创建成功";
     
+    // 创建里程点表
+    QString createMileagePointsTable = R"(
+        CREATE TABLE IF NOT EXISTS mileage_points (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            stake_mark VARCHAR(50),
+            mileage REAL,
+            latitude REAL,
+            longitude REAL,
+            elevation REAL,
+            near_borehole VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createMileagePointsTable)) {
+        lastError = "创建mileage_points表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "mileage_points表创建成功";
+    
     return true;
 }
 
@@ -403,16 +430,29 @@ bool DatabaseManager::insertDefaultData()
     query.prepare("INSERT INTO projects (project_name, brief, latitude, longitude, "
                   "construction_unit, start_date, progress, location, status, "
                   "emergency_contact1_name, emergency_contact1_phone, "
-                  "emergency_contact2_name, emergency_contact2_phone) "
+                  "emergency_contact2_name, emergency_contact2_phone, "
+                  "current_mileage, start_mileage, end_mileage) "
                   "VALUES (:name, :brief, :lat, :lon, :unit, :date, :progress, :location, :status, "
-                  ":contact1Name, :contact1Phone, :contact2Name, :contact2Phone)");
+                  ":contact1Name, :contact1Phone, :contact2Name, :contact2Phone, "
+                  ":currentMileage, :startMileage, :endMileage)");
     query.bindValue(":name", "青岛沿海公路");
     query.bindValue(":brief", "测试简介");
-    query.bindValue(":lat", 36.2);  // 崂山附近纬度
-    query.bindValue(":lon", 120.6);  // 崂山附近经度
+    query.bindValue(":lat", 36.065);  // 胶州湾大桥附近纬度
+    query.bindValue(":lon", 120.370);  // 胶州湾大桥附近经度
     query.bindValue(":unit", "测试单位");
     query.bindValue(":date", "2024-11-28");
-    query.bindValue(":progress", 66.7);
+    
+    // 根据CSV数据设置正确的里程和进度
+    // CSV数据里程范围: 2540-3280米左右
+    double startMileage = 2484.4;   // K2+484.4 起点
+    double endMileage = 3387.0;     // K3+387 终点  
+    double currentMileage = 3086.0;  // K3+086 当前位置(66.7%进度)
+    double progress = ((currentMileage - startMileage) / (endMileage - startMileage)) * 100.0;
+    
+    query.bindValue(":progress", progress);  // 66.7%
+    query.bindValue(":currentMileage", currentMileage);
+    query.bindValue(":startMileage", startMileage);
+    query.bindValue(":endMileage", endMileage);
     query.bindValue(":location", "山东青岛");
     query.bindValue(":status", "active");
     query.bindValue(":contact1Name", "张三");

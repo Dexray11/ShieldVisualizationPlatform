@@ -7,7 +7,9 @@ release/projectmanagementwindow.o
 release/geological2dwidget.o
 release/geological3dwidget.o
 release/mapwidget.o
+release/positioningdialog.o
 release/stylehelper.o
+release/CoordinateConverter.o
 release/DataImportTool.o
 release/GeoDataImporter.o
 release/DatabaseManager.o
@@ -17,6 +19,7 @@ release/WarningDAO.o
 release/NewsDAO.o
 release/BoreholeDAO.o
 release/TunnelProfileDAO.o
+release/MileageDAO.o
 release/User.o
 release/Project.o
 release/Warning.o
@@ -30,5 +33,6 @@ release/moc_projectmanagementwindow.o
 release/moc_geological2dwidget.o
 release/moc_geological3dwidget.o
 release/moc_mapwidget.o
+release/moc_positioningdialog.o
 release/moc_DataImportTool.o
 release/moc_GeoDataImporter.o

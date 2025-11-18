@@ -184,12 +184,11 @@ bool DataImportTool::importFromExcel(const QString &excelPath, int projectId)
     }
     
     QTextStream in(&file);
-    // Qt 6中已移除setCodec，使用setEncoding代替
+    // Qt 6默认使用UTF-8编码
     #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         in.setCodec("UTF-8");
-    #else
-        in.setEncoding(QStringConverter::Utf8);
     #endif
+    // Qt 6无需设置编码，默认即为UTF-8
     
     QString line;
     int lineNumber = 0;

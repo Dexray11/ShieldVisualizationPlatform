@@ -358,11 +358,10 @@ bool GeoDataImporter::importBoreholeData(const QString &filePath)
         QTextStream in(&file);
         
         // 设置编码为UTF-8
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        in.setEncoding(QStringConverter::Utf8);
-#else
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         in.setCodec("UTF-8");
 #endif
+        // Qt 6默认使用UTF-8编码
         
         // 读取第一行并处理UTF-8 BOM
         QString firstLine = in.readLine();
@@ -525,11 +524,10 @@ bool GeoDataImporter::importTunnelProfileData(const QString &filePath)
         QTextStream in(&file);
         
         // 设置编码为UTF-8
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        in.setEncoding(QStringConverter::Utf8);
-#else
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         in.setCodec("UTF-8");
 #endif
+        // Qt 6默认使用UTF-8编码
         
         TunnelProfileDAO dao;
         

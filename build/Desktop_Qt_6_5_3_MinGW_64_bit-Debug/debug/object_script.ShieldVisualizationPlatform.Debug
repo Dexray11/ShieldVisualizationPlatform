@@ -7,7 +7,9 @@ debug/projectmanagementwindow.o
 debug/geological2dwidget.o
 debug/geological3dwidget.o
 debug/mapwidget.o
+debug/positioningdialog.o
 debug/stylehelper.o
+debug/CoordinateConverter.o
 debug/DataImportTool.o
 debug/GeoDataImporter.o
 debug/DatabaseManager.o
@@ -17,6 +19,7 @@ debug/WarningDAO.o
 debug/NewsDAO.o
 debug/BoreholeDAO.o
 debug/TunnelProfileDAO.o
+debug/MileageDAO.o
 debug/User.o
 debug/Project.o
 debug/Warning.o
@@ -30,5 +33,6 @@ debug/moc_projectmanagementwindow.o
 debug/moc_geological2dwidget.o
 debug/moc_geological3dwidget.o
 debug/moc_mapwidget.o
+debug/moc_positioningdialog.o
 debug/moc_DataImportTool.o
 debug/moc_GeoDataImporter.o

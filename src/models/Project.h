@@ -37,6 +37,9 @@ public:
     QString getEmergencyContact2Phone() const { return emergencyContact2Phone; }
     QDateTime getCreatedAt() const { return createdAt; }
     QDateTime getUpdatedAt() const { return updatedAt; }
+    double getCurrentMileage() const { return currentMileage; }
+    double getStartMileage() const { return startMileage; }
+    double getEndMileage() const { return endMileage; }
     
     // Setters
     void setProjectId(int id) { projectId = id; }
@@ -57,6 +60,9 @@ public:
     void setEmergencyContact2Phone(const QString &phone) { emergencyContact2Phone = phone; }
     void setCreatedAt(const QDateTime &time) { createdAt = time; }
     void setUpdatedAt(const QDateTime &time) { updatedAt = time; }
+    void setCurrentMileage(double mileage) { currentMileage = mileage; }
+    void setStartMileage(double mileage) { startMileage = mileage; }
+    void setEndMileage(double mileage) { endMileage = mileage; }
     
     // 检查项目是否有效
     bool isValid() const { return projectId > 0; }
@@ -80,6 +86,9 @@ private:
     QString emergencyContact2Phone;
     QDateTime createdAt;
     QDateTime updatedAt;
+    double currentMileage;
+    double startMileage;
+    double endMileage;
 };
 
 #endif // PROJECT_H

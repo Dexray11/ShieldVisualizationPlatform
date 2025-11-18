@@ -24,7 +24,8 @@ QList<Project> ProjectDAO::getAllProjects()
                   "map_2d_path, map_3d_path, "
                   "emergency_contact1_name, emergency_contact1_phone, "
                   "emergency_contact2_name, emergency_contact2_phone, "
-                  "created_at, updated_at "
+                  "created_at, updated_at, "
+                  "current_mileage, start_mileage, end_mileage "
                   "FROM projects ORDER BY created_at DESC";
     
     if (!query.exec(sql)) {
@@ -53,6 +54,9 @@ QList<Project> ProjectDAO::getAllProjects()
         project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
+        project.setCurrentMileage(query.value("current_mileage").toDouble());
+        project.setStartMileage(query.value("start_mileage").toDouble());
+        project.setEndMileage(query.value("end_mileage").toDouble());
         
         projects.append(project);
     }
@@ -71,7 +75,8 @@ Project ProjectDAO::getProjectById(int projectId)
                   "map_2d_path, map_3d_path, "
                   "emergency_contact1_name, emergency_contact1_phone, "
                   "emergency_contact2_name, emergency_contact2_phone, "
-                  "created_at, updated_at "
+                  "created_at, updated_at, "
+                  "current_mileage, start_mileage, end_mileage "
                   "FROM projects WHERE project_id = :id");
     query.bindValue(":id", projectId);
     
@@ -100,6 +105,9 @@ Project ProjectDAO::getProjectById(int projectId)
         project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
+        project.setCurrentMileage(query.value("current_mileage").toDouble());
+        project.setStartMileage(query.value("start_mileage").toDouble());
+        project.setEndMileage(query.value("end_mileage").toDouble());
     }
     
     return project;
@@ -116,7 +124,8 @@ Project ProjectDAO::getProjectByName(const QString &projectName)
                   "map_2d_path, map_3d_path, "
                   "emergency_contact1_name, emergency_contact1_phone, "
                   "emergency_contact2_name, emergency_contact2_phone, "
-                  "created_at, updated_at "
+                  "created_at, updated_at, "
+                  "current_mileage, start_mileage, end_mileage "
                   "FROM projects WHERE project_name = :name");
     query.bindValue(":name", projectName);
     
@@ -145,6 +154,9 @@ Project ProjectDAO::getProjectByName(const QString &projectName)
         project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
+        project.setCurrentMileage(query.value("current_mileage").toDouble());
+        project.setStartMileage(query.value("start_mileage").toDouble());
+        project.setEndMileage(query.value("end_mileage").toDouble());
     }
     
     return project;
@@ -161,7 +173,8 @@ QList<Project> ProjectDAO::getProjectsByStatus(const QString &status)
                   "map_2d_path, map_3d_path, "
                   "emergency_contact1_name, emergency_contact1_phone, "
                   "emergency_contact2_name, emergency_contact2_phone, "
-                  "created_at, updated_at "
+                  "created_at, updated_at, "
+                  "current_mileage, start_mileage, end_mileage "
                   "FROM projects WHERE status = :status ORDER BY created_at DESC");
     query.bindValue(":status", status);
     
@@ -191,6 +204,9 @@ QList<Project> ProjectDAO::getProjectsByStatus(const QString &status)
         project.setEmergencyContact2Phone(query.value("emergency_contact2_phone").toString());
         project.setCreatedAt(query.value("created_at").toDateTime());
         project.setUpdatedAt(query.value("updated_at").toDateTime());
+        project.setCurrentMileage(query.value("current_mileage").toDouble());
+        project.setStartMileage(query.value("start_mileage").toDouble());
+        project.setEndMileage(query.value("end_mileage").toDouble());
         
         projects.append(project);
     }
@@ -227,6 +243,9 @@ bool ProjectDAO::insertProject(const Project &project)
     query.bindValue(":contact1Phone", project.getEmergencyContact1Phone());
     query.bindValue(":contact2Name", project.getEmergencyContact2Name());
     query.bindValue(":contact2Phone", project.getEmergencyContact2Phone());
+    query.bindValue(":currentMileage", project.getCurrentMileage());
+    query.bindValue(":startMileage", project.getStartMileage());
+    query.bindValue(":endMileage", project.getEndMileage());
     
     if (!query.exec()) {
         lastError = "插入项目失败: " + query.lastError().text();
@@ -267,6 +286,9 @@ bool ProjectDAO::updateProject(const Project &project)
     query.bindValue(":contact1Phone", project.getEmergencyContact1Phone());
     query.bindValue(":contact2Name", project.getEmergencyContact2Name());
     query.bindValue(":contact2Phone", project.getEmergencyContact2Phone());
+    query.bindValue(":currentMileage", project.getCurrentMileage());
+    query.bindValue(":startMileage", project.getStartMileage());
+    query.bindValue(":endMileage", project.getEndMileage());
     
     if (!query.exec()) {
         lastError = "更新项目失败: " + query.lastError().text();

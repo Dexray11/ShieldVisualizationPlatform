@@ -1,7 +1,8 @@
 #include "Project.h"
 
 Project::Project()
-    : projectId(0), latitude(0.0), longitude(0.0), progress(0.0)
+    : projectId(0), latitude(0.0), longitude(0.0), progress(0.0),
+      currentMileage(0.0), startMileage(0.0), endMileage(0.0)
 {
 }
 

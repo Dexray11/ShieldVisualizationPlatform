@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QTableWidget>
 #include "mapwidget.h"
+#include "positioningdialog.h"
 
 class Geological2DWidget;
 

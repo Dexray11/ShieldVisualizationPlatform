@@ -3,8 +3,10 @@
 #include "geological2dwidget.h"
 #include "geological3dwidget.h"
 #include "../utils/stylehelper.h"
+#include "../utils/CoordinateConverter.h"
 #include "../database/BoreholeDAO.h"
 #include "../database/ProjectDAO.h"
+#include "../database/MileageDAO.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -259,6 +261,42 @@ void ProjectWindow::loadMapView()
     titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
 
+    // 获取项目信息用于显示进度和桩号
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectByName(projectName);
+    
+    // 施工进度显示区域
+    QWidget *progressWidget = new QWidget(mainContent);
+    QHBoxLayout *progressLayout = new QHBoxLayout(progressWidget);
+    progressLayout->setSpacing(20);
+    progressLayout->setContentsMargins(0, 10, 0, 10);
+    
+    // 施工进度标签
+    if (project.isValid()) {
+        double progress = 0.0;
+        QString currentMileage = "K0+000";
+        
+        // 从项目数据计算进度
+        if (project.getEndMileage() > project.getStartMileage()) {
+            double totalLength = project.getEndMileage() - project.getStartMileage();
+            double currentLength = project.getCurrentMileage() - project.getStartMileage();
+            progress = (currentLength / totalLength) * 100.0;
+        }
+        
+        // 格式化当前桩号
+        currentMileage = CoordinateConverter::formatMileage(project.getCurrentMileage());
+        
+        QLabel *progressLabel = new QLabel(QString("施工进度: %1%").arg(progress, 0, 'f', 1), progressWidget);
+        progressLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #2E7D32;");
+        
+        QLabel *mileageLabel = new QLabel(QString("当前桩号: %1").arg(currentMileage), progressWidget);
+        mileageLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #1565C0;");
+        
+        progressLayout->addWidget(progressLabel);
+        progressLayout->addWidget(mileageLabel);
+        progressLayout->addStretch();
+    }
+
     // 定位输入区域
     QWidget *locationWidget = new QWidget(mainContent);
     QHBoxLayout *locationLayout = new QHBoxLayout(locationWidget);
@@ -270,11 +308,9 @@ void ProjectWindow::loadMapView()
     coordLabel->setFixedSize(24, 36);
     coordLabel->setAlignment(Qt::AlignCenter);
     
-    // 从数据库获取项目坐标
-    ProjectDAO projectDAO;
-    Project project = projectDAO.getProjectByName(projectName);
-    QString coordsText = QString("%1,%2").arg(project.getLongitude(), 0, 'f', 2)
-                                        .arg(project.getLatitude(), 0, 'f', 2);
+    // 使用已获取的项目坐标
+    QString coordsText = QString("%1,%2").arg(project.getLongitude(), 0, 'f', 3)
+                                        .arg(project.getLatitude(), 0, 'f', 3);
     
     coordsInput = new QLineEdit(coordsText, locationWidget);
     coordsInput->setPlaceholderText("输入坐标");
@@ -296,7 +332,11 @@ void ProjectWindow::loadMapView()
     stakeLabel->setAlignment(Qt::AlignCenter);
     stakeLabel->setStyleSheet("margin-left: 10px;");
     
-    stakeInput = new QLineEdit("K1+190.00", locationWidget);
+    // 显示当前桩号
+    QString currentStake = project.isValid() ? 
+        CoordinateConverter::formatMileage(project.getCurrentMileage()) : "K0+000";
+    
+    stakeInput = new QLineEdit(currentStake, locationWidget);
     stakeInput->setPlaceholderText("输入桩号");
     stakeInput->setFixedHeight(36);
     stakeInput->setStyleSheet(StyleHelper::getInputStyle());
@@ -348,9 +388,41 @@ void ProjectWindow::loadMapView()
             }
         }
     });
+    
+    // 连接桩号定位按钮
+    connect(stakeLocateBtn, &QPushButton::clicked, [this, mapWidget, &project]() {
+        QString stakeText = stakeInput->text().trimmed();
+        if (stakeText.isEmpty()) {
+            return;
+        }
+        
+        // 解析桩号
+        double mileage = CoordinateConverter::parseMileage(stakeText);
+        
+        // 获取项目ID
+        if (!project.isValid()) {
+            qWarning() << "项目无效:" << projectName;
+            return;
+        }
+        
+        int projectId = project.getProjectId();
+        MileageDAO mileageDAO;
+        MileageDAO::MileagePoint point = mileageDAO.getMileagePointByValue(projectId, mileage);
+        
+        if (point.id > 0) {
+            // 找到对应的里程点，定位到该点
+            mapWidget->setCenter(point.latitude, point.longitude);
+            mapWidget->setZoomLevel(16);
+            qDebug() << "定位到桩号:" << stakeText << "坐标:" << point.latitude << "," << point.longitude;
+        } else {
+            qWarning() << "未找到桩号" << stakeText << "对应的坐标";
+            QMessageBox::information(this, "提示", "未找到该桩号对应的坐标信息");
+        }
+    });
 
     // 添加到布局
     layout->addWidget(titleLabel);
+    layout->addWidget(progressWidget);
     layout->addWidget(locationWidget);
     layout->addWidget(mapWidget);
     layout->addStretch();

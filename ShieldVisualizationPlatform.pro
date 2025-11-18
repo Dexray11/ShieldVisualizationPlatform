@@ -17,7 +17,9 @@ SOURCES += \
     src/ui/geological2dwidget.cpp \
     src/ui/geological3dwidget.cpp \
     src/ui/mapwidget.cpp \
+    src/ui/positioningdialog.cpp \
     src/utils/stylehelper.cpp \
+    src/utils/CoordinateConverter.cpp \
     src/utils/DataImportTool.cpp \
     src/utils/GeoDataImporter.cpp \
     src/database/DatabaseManager.cpp \
@@ -27,6 +29,7 @@ SOURCES += \
     src/database/NewsDAO.cpp \
     src/database/BoreholeDAO.cpp \
     src/database/TunnelProfileDAO.cpp \
+    src/database/MileageDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
     src/models/Warning.cpp \
@@ -41,7 +44,9 @@ HEADERS += \
     src/ui/geological2dwidget.h \
     src/ui/geological3dwidget.h \
     src/ui/mapwidget.h \
+    src/ui/positioningdialog.h \
     src/utils/stylehelper.h \
+    src/utils/CoordinateConverter.h \
     src/utils/DataImportTool.h \
     src/utils/GeoDataImporter.h \
     src/database/DatabaseManager.h \
@@ -51,6 +56,7 @@ HEADERS += \
     src/database/NewsDAO.h \
     src/database/BoreholeDAO.h \
     src/database/TunnelProfileDAO.h \
+    src/database/MileageDAO.h \
     src/models/User.h \
     src/models/Project.h \
     src/models/Warning.h \

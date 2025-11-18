@@ -509,6 +509,12 @@ void DashboardWindow::showAllProjects()
     
     // 清除并重新加载地图标记
     mapWidget->clearMarkers();
+    
+    // 用于计算地图边界
+    double minLat = 90.0, maxLat = -90.0;
+    double minLon = 180.0, maxLon = -180.0;
+    int validProjectCount = 0;
+    
     for (const Project &project : projects) {
         // 只有当项目有有效的经纬度坐标时才添加标记
         if (project.getLatitude() != 0.0 || project.getLongitude() != 0.0) {
@@ -517,7 +523,41 @@ void DashboardWindow::showAllProjects()
                                        project.getConstructionUnit(),
                                        project.getLatitude(), 
                                        project.getLongitude());
+            
+            // 更新边界
+            if (project.getLatitude() < minLat) minLat = project.getLatitude();
+            if (project.getLatitude() > maxLat) maxLat = project.getLatitude();
+            if (project.getLongitude() < minLon) minLon = project.getLongitude();
+            if (project.getLongitude() > maxLon) maxLon = project.getLongitude();
+            validProjectCount++;
         }
+    }
+    
+    // 根据项目数量调整地图视图
+    if (validProjectCount == 1) {
+        // 只有一个项目时,居中显示该项目
+        mapWidget->setCenter((minLat + maxLat) / 2.0, (minLon + maxLon) / 2.0);
+        mapWidget->setZoomLevel(13); // 适中的缩放级别
+    } else if (validProjectCount > 1) {
+        // 多个项目时,调整视图以显示所有项目
+        double centerLat = (minLat + maxLat) / 2.0;
+        double centerLon = (minLon + maxLon) / 2.0;
+        mapWidget->setCenter(centerLat, centerLon);
+        
+        // 根据范围计算合适的缩放级别
+        double latRange = maxLat - minLat;
+        double lonRange = maxLon - minLon;
+        double maxRange = qMax(latRange, lonRange);
+        
+        // 根据范围确定缩放级别
+        int zoom = 13;
+        if (maxRange > 1.0) zoom = 8;
+        else if (maxRange > 0.5) zoom = 9;
+        else if (maxRange > 0.2) zoom = 10;
+        else if (maxRange > 0.1) zoom = 11;
+        else if (maxRange > 0.05) zoom = 12;
+        
+        mapWidget->setZoomLevel(zoom);
     }
     
     // 隐藏项目信息弹窗
