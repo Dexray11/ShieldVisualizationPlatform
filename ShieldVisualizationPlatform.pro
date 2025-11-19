@@ -30,6 +30,7 @@ SOURCES += \
     src/database/BoreholeDAO.cpp \
     src/database/TunnelProfileDAO.cpp \
     src/database/MileageDAO.cpp \
+    src/database/ShieldPositionDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
     src/models/Warning.cpp \
@@ -57,6 +58,7 @@ HEADERS += \
     src/database/BoreholeDAO.h \
     src/database/TunnelProfileDAO.h \
     src/database/MileageDAO.h \
+    src/database/ShieldPositionDAO.h \
     src/models/User.h \
     src/models/Project.h \
     src/models/Warning.h \

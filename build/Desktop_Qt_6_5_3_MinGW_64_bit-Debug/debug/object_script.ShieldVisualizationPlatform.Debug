@@ -20,6 +20,7 @@ debug/NewsDAO.o
 debug/BoreholeDAO.o
 debug/TunnelProfileDAO.o
 debug/MileageDAO.o
+debug/ShieldPositionDAO.o
 debug/User.o
 debug/Project.o
 debug/Warning.o

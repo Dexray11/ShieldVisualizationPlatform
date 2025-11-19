@@ -126,6 +126,7 @@ MileageDAO::MileagePoint MileageDAO::getMileagePointByStake(int projectId, const
     MileagePoint point;
     point.id = -1; // 无效ID表示未找到
     
+    // 先尝试直接匹配
     QSqlQuery query(getDatabase());
     query.prepare("SELECT id, project_id, stake_mark, mileage, latitude, longitude, "
                   "elevation, near_borehole FROM mileage_points "
@@ -133,12 +134,7 @@ MileageDAO::MileagePoint MileageDAO::getMileagePointByStake(int projectId, const
     query.bindValue(":projectId", projectId);
     query.bindValue(":stakeMark", stakeMark);
     
-    if (!query.exec()) {
-        qCritical() << "根据桩号查询失败:" << query.lastError().text();
-        return point;
-    }
-    
-    if (query.next()) {
+    if (query.exec() && query.next()) {
         point.id = query.value(0).toInt();
         point.projectId = query.value(1).toInt();
         point.stakeMark = query.value(2).toString();
@@ -147,6 +143,34 @@ MileageDAO::MileagePoint MileageDAO::getMileagePointByStake(int projectId, const
         point.longitude = query.value(5).toDouble();
         point.elevation = query.value(6).toDouble();
         point.nearBorehole = query.value(7).toString();
+        return point;
+    }
+    
+    // 如果直接匹配失败，尝试将输入的桩号转换为数值，然后查找最近的点
+    double mileage = stakeMarkToMileage(stakeMark);
+    if (mileage > 0) {
+        // 查找最接近的里程点（容差±5米）
+        query.prepare("SELECT id, project_id, stake_mark, mileage, latitude, longitude, "
+                      "elevation, near_borehole FROM mileage_points "
+                      "WHERE project_id = :projectId "
+                      "AND ABS(mileage - :mileage) <= 5.0 "
+                      "ORDER BY ABS(mileage - :mileage) LIMIT 1");
+        query.bindValue(":projectId", projectId);
+        query.bindValue(":mileage", mileage);
+        
+        if (query.exec() && query.next()) {
+            point.id = query.value(0).toInt();
+            point.projectId = query.value(1).toInt();
+            point.stakeMark = query.value(2).toString();
+            point.mileage = query.value(3).toDouble();
+            point.latitude = query.value(4).toDouble();
+            point.longitude = query.value(5).toDouble();
+            point.elevation = query.value(6).toDouble();
+            point.nearBorehole = query.value(7).toString();
+            
+            qDebug() << "桩号" << stakeMark << "匹配到最近点:" << point.stakeMark 
+                     << "差值:" << qAbs(point.mileage - mileage) << "米";
+        }
     }
     
     return point;

@@ -20,6 +20,7 @@ release/NewsDAO.o
 release/BoreholeDAO.o
 release/TunnelProfileDAO.o
 release/MileageDAO.o
+release/ShieldPositionDAO.o
 release/User.o
 release/Project.o
 release/Warning.o

@@ -2,11 +2,13 @@
 #include "mainmenuwindow.h"
 #include "geological2dwidget.h"
 #include "geological3dwidget.h"
+#include "positioningdialog.h"
 #include "../utils/stylehelper.h"
 #include "../utils/CoordinateConverter.h"
 #include "../database/BoreholeDAO.h"
 #include "../database/ProjectDAO.h"
 #include "../database/MileageDAO.h"
+#include "../database/ShieldPositionDAO.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -390,33 +392,42 @@ void ProjectWindow::loadMapView()
     });
     
     // 连接桩号定位按钮
-    connect(stakeLocateBtn, &QPushButton::clicked, [this, mapWidget, &project]() {
+    int projectId = project.isValid() ? project.getProjectId() : 0;
+    connect(stakeLocateBtn, &QPushButton::clicked, [this, mapWidget, projectId]() {
         QString stakeText = stakeInput->text().trimmed();
         if (stakeText.isEmpty()) {
             return;
         }
         
-        // 解析桩号
-        double mileage = CoordinateConverter::parseMileage(stakeText);
-        
-        // 获取项目ID
-        if (!project.isValid()) {
-            qWarning() << "项目无效:" << projectName;
+        // 验证项目ID
+        if (projectId <= 0) {
+            qWarning() << "项目ID无效";
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("错误");
+            msgBox.setText("无法获取项目信息");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
             return;
         }
-        
-        int projectId = project.getProjectId();
         MileageDAO mileageDAO;
-        MileageDAO::MileagePoint point = mileageDAO.getMileagePointByValue(projectId, mileage);
+        // 使用智能桩号匹配功能
+        MileageDAO::MileagePoint point = mileageDAO.getMileagePointByStake(projectId, stakeText);
         
         if (point.id > 0) {
             // 找到对应的里程点，定位到该点
             mapWidget->setCenter(point.latitude, point.longitude);
             mapWidget->setZoomLevel(16);
-            qDebug() << "定位到桩号:" << stakeText << "坐标:" << point.latitude << "," << point.longitude;
+            qDebug() << "定位到桩号:" << stakeText << "实际匹配:" << point.stakeMark 
+                     << "坐标:" << point.latitude << "," << point.longitude;
         } else {
             qWarning() << "未找到桩号" << stakeText << "对应的坐标";
-            QMessageBox::information(this, "提示", "未找到该桩号对应的坐标信息");
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("提示");
+            msgBox.setText(QString("未找到桩号 %1 对应的坐标信息\n\n可用范围: K2+484.40 到 K3+387.00").arg(stakeText));
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
         }
     });
 
@@ -447,6 +458,36 @@ void ProjectWindow::load2DView()
     Geological2DWidget *geo2DWidget = new Geological2DWidget(mainContent);
     geo2DWidget->setMinimumSize(1000, 450);
     geo2DWidget->loadBoreholeData("");  // 使用内置数据
+    
+    // 获取项目信息并设置盾构机位置
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectByName(projectName);
+    if (project.isValid()) {
+        // 从 shield_position 表读取盾构机位置（而不是从 projects 表）
+        ShieldPositionDAO shieldDAO;
+        if (shieldDAO.hasPosition(project.getProjectId())) {
+            ShieldPositionDAO::ShieldPosition shieldPos = shieldDAO.getPosition(project.getProjectId());
+            
+            // 将桩号转换为里程数值
+            MileageDAO mileageDAO;
+            MileageDAO::MileagePoint point = mileageDAO.getMileagePointByStake(
+                project.getProjectId(), shieldPos.frontStakeMark);
+            
+            if (point.id > 0) {
+                geo2DWidget->setShieldPosition(point.mileage);
+                qDebug() << "二维视图盾构机位置已更新 - 桩号:" << shieldPos.frontStakeMark 
+                         << "里程:" << point.mileage << "米";
+            } else {
+                // 如果桩号查询失败，使用项目默认里程
+                geo2DWidget->setShieldPosition(project.getCurrentMileage());
+                qDebug() << "使用项目默认里程:" << project.getCurrentMileage();
+            }
+        } else {
+            // 如果数据库中没有盾构机位置，使用项目默认里程
+            geo2DWidget->setShieldPosition(project.getCurrentMileage());
+            qDebug() << "数据库无盾构机位置，使用默认里程:" << project.getCurrentMileage();
+        }
+    }
     
     // 掌子面视图（简化显示）
     QWidget *faceViewWidget = new QWidget(mainContent);
@@ -945,207 +986,64 @@ void ProjectWindow::loadSupplementaryData()
 
 void ProjectWindow::showPositioningDialog()
 {
-    QDialog dialog(this);
-    dialog.setWindowTitle("定位校准 - 确定盾构机位置（三选一）");
-    dialog.setMinimumSize(750, 700);
-    dialog.setStyleSheet("QDialog { background-color: white; }");
-
-    QVBoxLayout *mainLayout = new QVBoxLayout(&dialog);
-    mainLayout->setSpacing(15);
-    mainLayout->setContentsMargins(25, 25, 25, 25);
-
-    // 标题
-    QLabel *titleLabel = new QLabel("定位校准 - 确定盾构机位置（三选一）", &dialog);
-    titleLabel->setStyleSheet(QString("font-size: 16px; font-weight: bold; color: %1;")
-                                  .arg(StyleHelper::COLOR_PRIMARY));
-    titleLabel->setAlignment(Qt::AlignCenter);
-
-    // 输入框样式
-    QString inputStyle = R"(
-        QLineEdit {
-            padding: 8px;
-            font-size: 13px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            background-color: white;
-            color: #333;
-        }
-        QLineEdit:focus {
-            border: 2px solid )" + QString(StyleHelper::COLOR_PRIMARY) + R"(;
-        }
-    )";
+    // 获取项目信息
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectByName(projectName);
     
-    QString labelStyle = "font-size: 13px; color: #333; font-weight: bold;";
+    if (!project.isValid()) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法获取项目信息");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+        msgBox.exec();
+        return;
+    }
     
-    QString groupBoxStyle = QString(R"(
-        QGroupBox {
-            font-weight: bold;
-            font-size: 13px;
-            color: %1;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-top: 10px;
-            padding: 15px 10px 10px 10px;
-            background-color: #fafafa;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            left: 10px;
-            padding: 0 5px;
-        }
-    )").arg(StyleHelper::COLOR_PRIMARY);
-
-    // GPS定位
-    QGroupBox *gpsGroup = new QGroupBox("链接GPS定位装置", &dialog);
-    gpsGroup->setStyleSheet(groupBoxStyle);
-    QHBoxLayout *gpsLayout = new QHBoxLayout(gpsGroup);
-    gpsLayout->setContentsMargins(10, 20, 10, 10);
-    gpsLayout->setSpacing(10);
+    PositioningDialog dialog(project.getProjectId(), this);
     
-    QPushButton *device1 = new QPushButton("演示装置1", gpsGroup);
-    QPushButton *device2 = new QPushButton("演示装置2", gpsGroup);
-    device1->setStyleSheet(StyleHelper::getButtonStyle());
-    device2->setStyleSheet(StyleHelper::getButtonStyle());
-    device1->setMinimumHeight(35);
-    device2->setMinimumHeight(35);
-    gpsLayout->addWidget(device1);
-    gpsLayout->addWidget(device2);
-
-    // 坐标输入
-    QGroupBox *coordsGroup = new QGroupBox("输入坐标确定盾构机位置", &dialog);
-    coordsGroup->setStyleSheet(groupBoxStyle);
-    QGridLayout *coordsLayout = new QGridLayout(coordsGroup);
-    coordsLayout->setContentsMargins(10, 25, 10, 10);
-    coordsLayout->setHorizontalSpacing(10);
-    coordsLayout->setVerticalSpacing(10);
-    coordsLayout->setColumnStretch(1, 1);
+    // 从数据库加载当前盾构机位置
+    ShieldPositionDAO shieldDAO;
+    if (shieldDAO.hasPosition(project.getProjectId())) {
+        ShieldPositionDAO::ShieldPosition dbPos = shieldDAO.getPosition(project.getProjectId());
+        
+        // 转换为对话框的位置格式
+        PositioningDialog::ShieldPosition currentPos;
+        currentPos.frontLatitude = dbPos.frontLatitude;
+        currentPos.frontLongitude = dbPos.frontLongitude;
+        currentPos.frontStakeMark = dbPos.frontStakeMark;
+        currentPos.rearLatitude = dbPos.rearLatitude;
+        currentPos.rearLongitude = dbPos.rearLongitude;
+        currentPos.rearStakeMark = dbPos.rearStakeMark;
+        currentPos.depth = dbPos.depth;
+        currentPos.inclination = dbPos.inclination;
+        currentPos.positioningMethod = dbPos.positioningMethod;
+        
+        dialog.setCurrentPosition(currentPos);
+        qDebug() << "已加载盾构机位置 - 前盾:" << dbPos.frontStakeMark << "盾尾:" << dbPos.rearStakeMark;
+    }
     
-    QLabel *label1 = new QLabel("前盾:", coordsGroup);
-    QLabel *label2 = new QLabel("盾尾:", coordsGroup);
-    QLabel *label3 = new QLabel("深度:", coordsGroup);
-    QLabel *label4 = new QLabel("倾角:", coordsGroup);
-    label1->setStyleSheet(labelStyle);
-    label2->setStyleSheet(labelStyle);
-    label3->setStyleSheet(labelStyle);
-    label4->setStyleSheet(labelStyle);
-    label1->setFixedWidth(50);
-    label2->setFixedWidth(50);
-    label3->setFixedWidth(50);
-    label4->setFixedWidth(50);
-    
-    QLineEdit *frontShieldCoords = new QLineEdit("120.36,36.23", coordsGroup);
-    QLineEdit *tailShieldCoords = new QLineEdit("120.36,36.23", coordsGroup);
-    QLineEdit *depth1 = new QLineEdit("15", coordsGroup);
-    QLineEdit *angle1 = new QLineEdit("9.83", coordsGroup);
-    
-    frontShieldCoords->setStyleSheet(inputStyle);
-    tailShieldCoords->setStyleSheet(inputStyle);
-    depth1->setStyleSheet(inputStyle);
-    angle1->setStyleSheet(inputStyle);
-    
-    frontShieldCoords->setMinimumHeight(32);
-    tailShieldCoords->setMinimumHeight(32);
-    depth1->setMinimumHeight(32);
-    angle1->setMinimumHeight(32);
-    
-    coordsLayout->addWidget(label1, 0, 0);
-    coordsLayout->addWidget(frontShieldCoords, 0, 1);
-    coordsLayout->addWidget(label2, 1, 0);
-    coordsLayout->addWidget(tailShieldCoords, 1, 1);
-    coordsLayout->addWidget(label3, 2, 0);
-    coordsLayout->addWidget(depth1, 2, 1);
-    coordsLayout->addWidget(label4, 3, 0);
-    coordsLayout->addWidget(angle1, 3, 1);
-
-    // 桩号输入
-    QGroupBox *stakeGroup = new QGroupBox("输入桩号确定盾构机位置", &dialog);
-    stakeGroup->setStyleSheet(groupBoxStyle);
-    QGridLayout *stakeLayout = new QGridLayout(stakeGroup);
-    stakeLayout->setContentsMargins(10, 25, 10, 10);
-    stakeLayout->setHorizontalSpacing(10);
-    stakeLayout->setVerticalSpacing(10);
-    stakeLayout->setColumnStretch(1, 1);
-    
-    QLabel *label5 = new QLabel("前盾:", stakeGroup);
-    QLabel *label6 = new QLabel("盾尾:", stakeGroup);
-    QLabel *label7 = new QLabel("深度:", stakeGroup);
-    QLabel *label8 = new QLabel("倾角:", stakeGroup);
-    label5->setStyleSheet(labelStyle);
-    label6->setStyleSheet(labelStyle);
-    label7->setStyleSheet(labelStyle);
-    label8->setStyleSheet(labelStyle);
-    label5->setFixedWidth(50);
-    label6->setFixedWidth(50);
-    label7->setFixedWidth(50);
-    label8->setFixedWidth(50);
-    
-    QLineEdit *frontStake = new QLineEdit("K1+190.265", stakeGroup);
-    QLineEdit *tailStake = new QLineEdit("K1+210.265", stakeGroup);
-    QLineEdit *depth2 = new QLineEdit("12", stakeGroup);
-    QLineEdit *angle2 = new QLineEdit("11.60", stakeGroup);
-    
-    frontStake->setStyleSheet(inputStyle);
-    tailStake->setStyleSheet(inputStyle);
-    depth2->setStyleSheet(inputStyle);
-    angle2->setStyleSheet(inputStyle);
-    
-    frontStake->setMinimumHeight(32);
-    tailStake->setMinimumHeight(32);
-    depth2->setMinimumHeight(32);
-    angle2->setMinimumHeight(32);
-    
-    stakeLayout->addWidget(label5, 0, 0);
-    stakeLayout->addWidget(frontStake, 0, 1);
-    stakeLayout->addWidget(label6, 1, 0);
-    stakeLayout->addWidget(tailStake, 1, 1);
-    stakeLayout->addWidget(label7, 2, 0);
-    stakeLayout->addWidget(depth2, 2, 1);
-    stakeLayout->addWidget(label8, 3, 0);
-    stakeLayout->addWidget(angle2, 3, 1);
-
-    // 底部按钮
-    QWidget *buttonWidget = new QWidget(&dialog);
-    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonWidget);
-    buttonLayout->setContentsMargins(0, 0, 0, 0);
-    buttonLayout->addStretch();
-    
-    QPushButton *confirmBtn = new QPushButton("确认", buttonWidget);
-    QPushButton *cancelBtn = new QPushButton("取消", buttonWidget);
-    
-    QString btnStyle = QString(R"(
-        QPushButton {
-            padding: 8px 25px;
-            font-size: 13px;
-            background-color: %1;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            min-width: 80px;
-        }
-        QPushButton:hover {
-            background-color: %2;
-        }
-    )").arg(StyleHelper::COLOR_PRIMARY).arg(StyleHelper::COLOR_SECONDARY);
-    
-    confirmBtn->setStyleSheet(btnStyle);
-    cancelBtn->setStyleSheet(btnStyle);
-    confirmBtn->setMinimumHeight(36);
-    cancelBtn->setMinimumHeight(36);
-    
-    connect(confirmBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
-    connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
-    
-    buttonLayout->addWidget(confirmBtn);
-    buttonLayout->addWidget(cancelBtn);
-
-    mainLayout->addWidget(titleLabel);
-    mainLayout->addWidget(gpsGroup);
-    mainLayout->addWidget(coordsGroup);
-    mainLayout->addWidget(stakeGroup);
-    mainLayout->addWidget(buttonWidget);
-
-    dialog.exec();
+    if (dialog.exec() == QDialog::Accepted) {
+        // 获取新的盾构机位置
+        PositioningDialog::ShieldPosition newPos = dialog.getShieldPosition();
+        
+        // 位置已经在对话框中保存到数据库了
+        // TODO: 更新地图、工程俯视图和二维视图中的盾构机位置
+        // 这需要在mapWidget、geological2dWidget等中实现相应的更新函数
+        
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("定位完成");
+        msgBox.setText(QString("盾构机位置已更新\n前盾: %1\n盾尾: %2")
+                       .arg(newPos.frontStakeMark.isEmpty() ? 
+                            QString("(%1, %2)").arg(newPos.frontLongitude, 0, 'f', 6).arg(newPos.frontLatitude, 0, 'f', 6) : 
+                            newPos.frontStakeMark)
+                       .arg(newPos.rearStakeMark.isEmpty() ? 
+                            QString("(%1, %2)").arg(newPos.rearLongitude, 0, 'f', 6).arg(newPos.rearLatitude, 0, 'f', 6) : 
+                            newPos.rearStakeMark));
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+        msgBox.exec();
+    }
 }
 
 

@@ -49,6 +49,9 @@ public:
     
     // 设置是否有GPS设备可用
     void setGPSAvailable(bool available);
+    
+    // 设置当前盾构机位置（用于显示当前位置）
+    void setCurrentPosition(const ShieldPosition &pos);
 
 private slots:
     void onPositioningMethodChanged();
@@ -57,6 +60,7 @@ private slots:
     void onCancelClicked();
     void onLocateByCoords();
     void onLocateByStake();
+    void onResetPosition();
 
 private:
     void setupUI();
@@ -67,6 +71,10 @@ private:
     
     int projectId;
     ShieldPosition position;
+    ShieldPosition lastPosition;     // 保存上一次的位置（暂不使用）
+    ShieldPosition originalPosition; // 打开对话框时的原始位置（暂不使用）
+    ShieldPosition resetTargetPosition; // 复位目标：上次点击"确认保存"前的位置
+    bool positionChanged;            // 标记位置是否已更改
     
     // UI组件
     QButtonGroup *methodGroup;
@@ -94,6 +102,9 @@ private:
     QLineEdit *stakeDepthEdit;     // 深度
     QLineEdit *stakeInclEdit;      // 倾角
     QPushButton *locateByStakeBtn;
+    
+    // 复位按钮
+    QPushButton *resetBtn;
     
     // 确认/取消按钮
     QPushButton *confirmBtn;

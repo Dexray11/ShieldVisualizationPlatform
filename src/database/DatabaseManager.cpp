@@ -378,6 +378,41 @@ bool DatabaseManager::createTables()
     
     qDebug() << "mileage_points表创建成功";
     
+    // 创建盾构机位置表
+    QString createShieldPositionTable = R"(
+        CREATE TABLE IF NOT EXISTS shield_position (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL UNIQUE,
+            front_latitude REAL,
+            front_longitude REAL,
+            front_stake_mark VARCHAR(50),
+            rear_latitude REAL,
+            rear_longitude REAL,
+            rear_stake_mark VARCHAR(50),
+            depth REAL,
+            inclination REAL,
+            positioning_method INTEGER,
+            previous_front_latitude REAL,
+            previous_front_longitude REAL,
+            previous_front_stake_mark VARCHAR(50),
+            previous_rear_latitude REAL,
+            previous_rear_longitude REAL,
+            previous_rear_stake_mark VARCHAR(50),
+            previous_depth REAL,
+            previous_inclination REAL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createShieldPositionTable)) {
+        lastError = "创建shield_position表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "shield_position表创建成功";
+    
     return true;
 }
 
@@ -558,6 +593,98 @@ bool DatabaseManager::insertDefaultData()
     query.bindValue(":createdBy", 1);
     if (!query.exec()) {
         qWarning() << "插入新闻4失败:" << query.lastError().text();
+    }
+    
+    // 为示例项目插入里程数据
+    // 项目里程范围: K2+484.4 到 K3+387，每10米一个点
+    qDebug() << "开始插入里程数据...";
+    
+    // 青岛沿海公路大致方向：东北-西南走向
+    // 起点: (120.370, 36.065)
+    // 终点: (120.383, 36.076)
+    
+    double startLon = 120.370;
+    double startLat = 36.065;
+    double endLon = 120.383;
+    double endLat = 36.076;
+    
+    // 计算总距离（米）
+    double totalDistance = endMileage - startMileage;  // 902.6米
+    int numPoints = static_cast<int>(totalDistance / 10.0) + 1;  // 每10米一个点
+    
+    query.prepare("INSERT INTO mileage_points (project_id, stake_mark, mileage, "
+                  "latitude, longitude, elevation, near_borehole) "
+                  "VALUES (:pid, :stake, :mileage, :lat, :lon, :elev, :borehole)");
+    
+    for (int i = 0; i < numPoints; ++i) {
+        double ratio = static_cast<double>(i) / (numPoints - 1);
+        double currentMileage = startMileage + i * 10.0;
+        
+        // 计算当前点的坐标
+        double lon = startLon + ratio * (endLon - startLon);
+        double lat = startLat + ratio * (endLat - startLat);
+        
+        // 生成桩号
+        int km = static_cast<int>(currentMileage / 1000.0);
+        double m = currentMileage - (km * 1000.0);
+        QString stakeMark = QString("K%1+%2").arg(km).arg(m, 0, 'f', 2);
+        
+        // 假设高程在15-20米之间变化
+        double elevation = 15.0 + ratio * 5.0;
+        
+        // 钻孔编号（简单模拟）
+        QString borehole = QString("ZK-%1").arg(i + 1, 3, 10, QChar('0'));
+        
+        query.bindValue(":pid", projectId);
+        query.bindValue(":stake", stakeMark);
+        query.bindValue(":mileage", currentMileage);
+        query.bindValue(":lat", lat);
+        query.bindValue(":lon", lon);
+        query.bindValue(":elev", elevation);
+        query.bindValue(":borehole", borehole);
+        
+        if (!query.exec()) {
+            qWarning() << "插入里程点" << stakeMark << "失败:" << query.lastError().text();
+        }
+    }
+    
+    qDebug() << "里程数据插入完成，共" << numPoints << "个点";
+    
+    // 插入默认盾构机位置（当前进度K3+086.00）
+    query.prepare("INSERT INTO shield_position "
+                  "(project_id, front_latitude, front_longitude, front_stake_mark, "
+                  "rear_latitude, rear_longitude, rear_stake_mark, depth, inclination, positioning_method) "
+                  "VALUES (:pid, :frontLat, :frontLon, :frontStake, "
+                  ":rearLat, :rearLon, :rearStake, :depth, :incl, :method)");
+    
+    // 前盾位置: K3+086.00
+    // 盾尾位置: K3+100.00 (假设盾构机长度约14米)
+    double frontMileage = 3086.0;
+    double rearMileage = 3100.0;
+    
+    double frontRatio = (frontMileage - startMileage) / totalDistance;
+    double rearRatio = (rearMileage - startMileage) / totalDistance;
+    
+    double frontLon = startLon + frontRatio * (endLon - startLon);
+    double frontLat = startLat + frontRatio * (endLat - startLat);
+    double rearLon = startLon + rearRatio * (endLon - startLon);
+    double rearLat = startLat + rearRatio * (endLat - startLat);
+    
+    query.bindValue(":pid", projectId);
+    query.bindValue(":frontLat", frontLat);
+    query.bindValue(":frontLon", frontLon);
+    query.bindValue(":frontStake", "K3+086.00");
+    query.bindValue(":rearLat", rearLat);
+    query.bindValue(":rearLon", rearLon);
+    query.bindValue(":rearStake", "K3+100.00");
+    query.bindValue(":depth", 15.0);
+    query.bindValue(":incl", 9.83);
+    query.bindValue(":method", 2);  // 桩号方式
+    
+    if (query.exec()) {
+        qDebug() << "默认盾构机位置已插入 - 前盾: K3+086.00, 盾尾: K3+100.00";
+    } else {
+        qWarning() << "插入默认盾构机位置失败:" << query.lastError().text();
     }
     
     qDebug() << "默认数据插入完成";
