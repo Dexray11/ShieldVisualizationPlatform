@@ -21,10 +21,12 @@ release/BoreholeDAO.o
 release/TunnelProfileDAO.o
 release/MileageDAO.o
 release/ShieldPositionDAO.o
+release/ExcavationParameterDAO.o
 release/User.o
 release/Project.o
 release/Warning.o
 release/News.o
+release/ExcavationParameter.o
 release/qrc_resources.o
 release/moc_loginwindow.o
 release/moc_mainmenuwindow.o

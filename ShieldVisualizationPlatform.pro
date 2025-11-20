@@ -31,10 +31,12 @@ SOURCES += \
     src/database/TunnelProfileDAO.cpp \
     src/database/MileageDAO.cpp \
     src/database/ShieldPositionDAO.cpp \
+    src/database/ExcavationParameterDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
     src/models/Warning.cpp \
-    src/models/News.cpp
+    src/models/News.cpp \
+    src/models/ExcavationParameter.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -59,10 +61,12 @@ HEADERS += \
     src/database/TunnelProfileDAO.h \
     src/database/MileageDAO.h \
     src/database/ShieldPositionDAO.h \
+    src/database/ExcavationParameterDAO.h \
     src/models/User.h \
     src/models/Project.h \
     src/models/Warning.h \
-    src/models/News.h
+    src/models/News.h \
+    src/models/ExcavationParameter.h
 
 RESOURCES += \
     resources/resources.qrc

@@ -9,6 +9,7 @@
 #include "../database/ProjectDAO.h"
 #include "../database/MileageDAO.h"
 #include "../database/ShieldPositionDAO.h"
+#include "../database/ExcavationParameterDAO.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -28,10 +29,21 @@
 ProjectWindow::ProjectWindow(const QString &projectName, QWidget *parent)
     : QMainWindow(parent)
     , projectName(projectName)
+    , projectId(0)
 {
     // 设置为独立窗口,确保任务栏显示
     setWindowFlags(Qt::Window);
     setAttribute(Qt::WA_DeleteOnClose);
+    
+    // 从数据库查询项目ID
+    ProjectDAO projectDAO;
+    QList<Project> projects = projectDAO.getAllProjects();
+    for (const Project &project : projects) {
+        if (project.getProjectName() == projectName) {
+            projectId = project.getProjectId();
+            break;
+        }
+    }
     
     setupUI();
 
@@ -603,10 +615,15 @@ void ProjectWindow::loadExcavationParams()
     clearMainContent();
     QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(mainContent->layout());
 
-    QLabel *titleLabel = new QLabel("掘进参数", mainContent);
+    QLabel *titleLabel = new QLabel("掘进参数（实时数据）", mainContent);
     titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
 
+    // 从数据库查询最新的掘进参数
+    ExcavationParameterDAO dao;
+    ExcavationParameter param;
+    bool hasData = dao.getLatestExcavationParameter(projectId, param);
+    
     // 创建参数显示面板
     QWidget *paramsPanel = new QWidget(mainContent);
     paramsPanel->setStyleSheet(QString(R"(
@@ -627,24 +644,48 @@ void ProjectWindow::loadExcavationParams()
         "刀盘扭矩：", "掘进速度：", "注浆压力：", "注浆量："
     };
 
-    QStringList paramValues = {
-        "土压平衡模式", "演示压力Pa", "2500t", "1.5rpm",
-        "2000kN·m", "50mm/min", "2.5kg/cm²", "6m³/环"
-    };
+    QStringList paramValues;
+    if (hasData) {
+        // 从数据库读取的实时数据
+        paramValues = {
+            param.getExcavationMode(),
+            QString::number(param.getChamberPressure(), 'f', 2) + " MPa",
+            QString::number(param.getThrustForce(), 'f', 0) + " t",
+            QString::number(param.getCutterSpeed(), 'f', 1) + " rpm",
+            QString::number(param.getCutterTorque(), 'f', 0) + " kN·m",
+            QString::number(param.getExcavationSpeed(), 'f', 0) + " mm/min",
+            QString::number(param.getGroutingPressure(), 'f', 1) + " kg/cm²",
+            QString::number(param.getGroutingVolume(), 'f', 1) + " m³/环"
+        };
+        
+        // 显示数据时间
+        QLabel *timeLabel = new QLabel(QString("数据时间：%1").arg(param.getExcavationTime().toString("yyyy-MM-dd HH:mm:ss")), paramsPanel);
+        timeLabel->setStyleSheet(QString("color: %1; font-style: italic;").arg(StyleHelper::COLOR_TEXT));
+        paramsLayout->addWidget(timeLabel, 0, 0, 1, 4);
+    } else {
+        // 无数据时显示提示
+        paramValues = {
+            "无数据", "无数据", "无数据", "无数据",
+            "无数据", "无数据", "无数据", "无数据"
+        };
+    }
 
     for (int i = 0; i < paramLabels.size(); i++) {
+        int row = i / 2 + 1;  // 从第1行开始（第0行是时间）
+        int col = (i % 2) * 2;
+        
         QLabel *label = new QLabel(paramLabels[i], paramsPanel);
         label->setStyleSheet(QString("font-weight: bold; color: %1;").arg(StyleHelper::COLOR_TEXT_DARK));
 
         QLabel *value = new QLabel(paramValues[i], paramsPanel);
         value->setStyleSheet(QString("color: %1;").arg(StyleHelper::COLOR_TEXT_DARK));
 
-        paramsLayout->addWidget(label, i / 2, (i % 2) * 2);
-        paramsLayout->addWidget(value, i / 2, (i % 2) * 2 + 1);
+        paramsLayout->addWidget(label, row, col);
+        paramsLayout->addWidget(value, row, col + 1);
     }
 
     // 掘进统计信息
-    QLabel *statsTitle = new QLabel("掘进统计", mainContent);
+    QLabel *statsTitle = new QLabel("掘进统计（累计）", mainContent);
     statsTitle->setStyleSheet(QString("font-size: 16px; font-weight: bold; color: %1; margin-top: 20px;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
 
@@ -661,8 +702,36 @@ void ProjectWindow::loadExcavationParams()
     statsLayout->setSpacing(15);
     statsLayout->setContentsMargins(20, 20, 20, 20);
 
+    // 计算累计统计数据
+    QList<ExcavationParameter> allParams = dao.getExcavationParametersByProjectId(projectId);
+    int totalDuration = 0;
+    int totalIdle = 0;
+    int totalFault = 0;
+    double totalDistance = 0.0;
+    
+    for (const ExcavationParameter &p : allParams) {
+        totalDuration += p.getExcavationDuration();
+        totalIdle += p.getIdleDuration();
+        totalFault += p.getFaultDuration();
+        totalDistance += p.getExcavationDistance();
+    }
+    
+    double faultRatio = (totalDuration + totalIdle + totalFault) > 0 ? 
+                        (double)totalFault / (totalDuration + totalIdle + totalFault) * 100.0 : 0.0;
+
     QStringList statsLabels = {"掘进时间：", "闲置时间：", "故障时间比例：", "掘进距离："};
-    QStringList statsValues = {"160min", "400min", "21.3%", "55m"};
+    QStringList statsValues;
+    
+    if (hasData) {
+        statsValues = {
+            QString::number(totalDuration) + " min",
+            QString::number(totalIdle) + " min",
+            QString::number(faultRatio, 'f', 1) + "%",
+            QString::number(totalDistance, 'f', 2) + " m"
+        };
+    } else {
+        statsValues = {"0 min", "0 min", "0%", "0 m"};
+    }
 
     for (int i = 0; i < statsLabels.size(); i++) {
         QLabel *label = new QLabel(statsLabels[i], statsPanel);

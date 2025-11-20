@@ -46,6 +46,7 @@ private:
     void clearMainContent();
     
     QString projectName;
+    int projectId;  // 添加项目ID
     QWidget *centralWidget;
     QWidget *sidebar;
     QWidget *mainContent;

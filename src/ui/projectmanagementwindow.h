@@ -28,6 +28,10 @@ private slots:
     void onEditNews(int row);
     void onDeleteNews(int row);
     void onImportGeoData();  // 导入地质数据槽函数
+    void onSearchExcavation();  // 搜索掘进信息
+    void onRefreshExcavation();  // 刷新掘进信息
+    void onFilterExcavation();  // 筛选掘进信息
+    void onExportExcavation();  // 导出掘进信息
 
 private:
     void setupUI();
@@ -40,6 +44,7 @@ private:
     void createSupplementaryDataTab();
     void createNewsModuleTab();
     void loadProjectData();
+    void loadExcavationData();  // 加载掘进信息数据
     void showNewProjectDialog();
     
     QWidget *centralWidget;

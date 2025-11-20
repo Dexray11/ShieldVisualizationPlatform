@@ -5,6 +5,7 @@
 #include "../database/ProjectDAO.h"
 #include "../database/WarningDAO.h"
 #include "../database/NewsDAO.h"
+#include "../database/ExcavationParameterDAO.h"
 #include "../models/Project.h"
 #include "../models/Warning.h"
 #include "../models/News.h"
@@ -16,6 +17,8 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDateEdit>
+#include <QDateTimeEdit>
+#include <QComboBox>
 #include <QSpinBox>
 #include <QFileDialog>
 #include <QApplication>
@@ -24,6 +27,8 @@
 #include <QSqlError>
 #include <QCheckBox>
 #include <QTextEdit>
+#include <QTextStream>
+#include <QStringConverter>
 
 ProjectManagementWindow::ProjectManagementWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -383,6 +388,7 @@ void ProjectManagementWindow::createExcavationInfoTab()
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     
     QLineEdit *searchBox = new QLineEdit(topWidget);
+    searchBox->setObjectName("excavationSearchBox");  // 设置对象名以便后续访问
     searchBox->setPlaceholderText("搜索");
     searchBox->setStyleSheet(StyleHelper::getInputStyle());
     searchBox->setMaximumWidth(250);
@@ -393,6 +399,7 @@ void ProjectManagementWindow::createExcavationInfoTab()
     searchBtn->setFixedSize(40, 40);
     searchBtn->setStyleSheet(StyleHelper::getButtonStyle());
     searchBtn->setToolTip("搜索");
+    connect(searchBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onSearchExcavation);
     
     QPushButton *refreshBtn = new QPushButton(topWidget);
     refreshBtn->setIcon(QIcon(":/icons/refresh.png"));
@@ -400,6 +407,7 @@ void ProjectManagementWindow::createExcavationInfoTab()
     refreshBtn->setFixedSize(40, 40);
     refreshBtn->setStyleSheet(StyleHelper::getButtonStyle());
     refreshBtn->setToolTip("还原");
+    connect(refreshBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onRefreshExcavation);
     
     QPushButton *filterBtn = new QPushButton(topWidget);
     filterBtn->setIcon(QIcon(":/icons/filter.png"));
@@ -407,6 +415,7 @@ void ProjectManagementWindow::createExcavationInfoTab()
     filterBtn->setFixedSize(40, 40);
     filterBtn->setStyleSheet(StyleHelper::getButtonStyle());
     filterBtn->setToolTip("筛选");
+    connect(filterBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onFilterExcavation);
     
     QPushButton *exportBtn = new QPushButton(topWidget);
     exportBtn->setIcon(QIcon(":/icons/export.png"));
@@ -414,6 +423,7 @@ void ProjectManagementWindow::createExcavationInfoTab()
     exportBtn->setFixedSize(40, 40);
     exportBtn->setStyleSheet(StyleHelper::getButtonStyle());
     exportBtn->setToolTip("导出");
+    connect(exportBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onExportExcavation);
     
     topLayout->addWidget(searchBox);
     topLayout->addWidget(searchBtn);
@@ -863,8 +873,10 @@ void ProjectManagementWindow::onDeleteProject(int row)
 
 void ProjectManagementWindow::onTabChanged(int index)
 {
-    Q_UNUSED(index);
-    // 可以在这里处理标签页切换事件
+    // 当切换到掘进信息标签页（index=2）时加载数据
+    if (index == 2) {
+        loadExcavationData();
+    }
 }
 
 void ProjectManagementWindow::onPublishNews()
@@ -1158,4 +1170,281 @@ void ProjectManagementWindow::onImportGeoData()
     });
     
     importer->show();
+}
+
+// 加载掘进信息数据
+void ProjectManagementWindow::loadExcavationData()
+{
+    excavationTable->setRowCount(0);  // 清空表格
+    
+    // 从数据库查询所有项目及其掘进参数
+    ProjectDAO projectDAO;
+    ExcavationParameterDAO excavDAO;
+    
+    QList<Project> projects = projectDAO.getAllProjects();
+    
+    for (const Project &project : projects) {
+        // 查询该项目的所有掘进参数（按时间降序）
+        QList<ExcavationParameter> params = excavDAO.getExcavationParametersByPage(
+            project.getProjectId(), 1, 100);  // 默认显示最近100条
+        
+        for (const ExcavationParameter &param : params) {
+            int row = excavationTable->rowCount();
+            excavationTable->insertRow(row);
+            
+            excavationTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+            excavationTable->setItem(row, 1, new QTableWidgetItem(
+                param.getExcavationTime().toString("yyyy-MM-dd HH:mm:ss")));
+            excavationTable->setItem(row, 2, new QTableWidgetItem(param.getStakeMark()));
+            excavationTable->setItem(row, 3, new QTableWidgetItem(param.getExcavationMode()));
+            excavationTable->setItem(row, 4, new QTableWidgetItem(
+                QString::number(param.getChamberPressure(), 'f', 2)));
+            excavationTable->setItem(row, 5, new QTableWidgetItem(
+                QString::number(param.getThrustForce(), 'f', 0)));
+            excavationTable->setItem(row, 6, new QTableWidgetItem(
+                QString::number(param.getCutterSpeed(), 'f', 1)));
+            excavationTable->setItem(row, 7, new QTableWidgetItem(
+                QString::number(param.getCutterTorque(), 'f', 0)));
+        }
+    }
+}
+
+// 搜索掘进信息
+void ProjectManagementWindow::onSearchExcavation()
+{
+    QLineEdit *searchBox = excavationTable->parentWidget()->findChild<QLineEdit*>("excavationSearchBox");
+    if (!searchBox) return;
+    
+    QString keyword = searchBox->text().trimmed();
+    if (keyword.isEmpty()) {
+        loadExcavationData();  // 如果搜索框为空，显示所有数据
+        return;
+    }
+    
+    // 隐藏不匹配的行
+    for (int row = 0; row < excavationTable->rowCount(); ++row) {
+        bool match = false;
+        for (int col = 0; col < excavationTable->columnCount(); ++col) {
+            QTableWidgetItem *item = excavationTable->item(row, col);
+            if (item && item->text().contains(keyword, Qt::CaseInsensitive)) {
+                match = true;
+                break;
+            }
+        }
+        excavationTable->setRowHidden(row, !match);
+    }
+}
+
+// 刷新掘进信息
+void ProjectManagementWindow::onRefreshExcavation()
+{
+    loadExcavationData();
+    
+    // 清空搜索框
+    QLineEdit *searchBox = excavationTable->parentWidget()->findChild<QLineEdit*>("excavationSearchBox");
+    if (searchBox) {
+        searchBox->clear();
+    }
+    
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("提示");
+    msgBox.setText("数据已刷新");
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                         "QLabel { color: black; } "
+                         "QPushButton { background-color: #0078d4; color: white; "
+                         "border-radius: 4px; padding: 5px 15px; }");
+    msgBox.exec();
+}
+
+// 筛选掘进信息
+void ProjectManagementWindow::onFilterExcavation()
+{
+    // 创建筛选对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("筛选掘进信息");
+    dialog.setFixedSize(500, 400);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+    
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(15);
+    layout->setContentsMargins(30, 30, 30, 30);
+    
+    // 项目选择
+    QLabel *projectLabel = new QLabel("选择项目：", &dialog);
+    QComboBox *projectCombo = new QComboBox(&dialog);
+    projectCombo->addItem("全部项目", 0);
+    
+    ProjectDAO projectDAO;
+    QList<Project> projects = projectDAO.getAllProjects();
+    for (const Project &project : projects) {
+        projectCombo->addItem(project.getProjectName(), project.getProjectId());
+    }
+    
+    // 时间范围
+    QLabel *timeLabel = new QLabel("时间范围：", &dialog);
+    QHBoxLayout *timeLayout = new QHBoxLayout();
+    QDateTimeEdit *startTime = new QDateTimeEdit(&dialog);
+    startTime->setDateTime(QDateTime::currentDateTime().addDays(-7));
+    startTime->setDisplayFormat("yyyy-MM-dd HH:mm");
+    QLabel *toLabel = new QLabel("至", &dialog);
+    QDateTimeEdit *endTime = new QDateTimeEdit(&dialog);
+    endTime->setDateTime(QDateTime::currentDateTime());
+    endTime->setDisplayFormat("yyyy-MM-dd HH:mm");
+    timeLayout->addWidget(startTime);
+    timeLayout->addWidget(toLabel);
+    timeLayout->addWidget(endTime);
+    
+    layout->addWidget(projectLabel);
+    layout->addWidget(projectCombo);
+    layout->addWidget(timeLabel);
+    layout->addLayout(timeLayout);
+    layout->addStretch();
+    
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("筛选");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    
+    layout->addWidget(buttonBox);
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        excavationTable->setRowCount(0);
+        
+        int selectedProjectId = projectCombo->currentData().toInt();
+        QDateTime start = startTime->dateTime();
+        QDateTime end = endTime->dateTime();
+        
+        ExcavationParameterDAO excavDAO;
+        ProjectDAO projDAO;
+        
+        if (selectedProjectId == 0) {
+            // 全部项目
+            for (const Project &project : projects) {
+                QList<ExcavationParameter> params = excavDAO.getExcavationParametersByTimeRange(
+                    project.getProjectId(), start, end);
+                
+                for (const ExcavationParameter &param : params) {
+                    int row = excavationTable->rowCount();
+                    excavationTable->insertRow(row);
+                    
+                    excavationTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+                    excavationTable->setItem(row, 1, new QTableWidgetItem(
+                        param.getExcavationTime().toString("yyyy-MM-dd HH:mm:ss")));
+                    excavationTable->setItem(row, 2, new QTableWidgetItem(param.getStakeMark()));
+                    excavationTable->setItem(row, 3, new QTableWidgetItem(param.getExcavationMode()));
+                    excavationTable->setItem(row, 4, new QTableWidgetItem(
+                        QString::number(param.getChamberPressure(), 'f', 2)));
+                    excavationTable->setItem(row, 5, new QTableWidgetItem(
+                        QString::number(param.getThrustForce(), 'f', 0)));
+                    excavationTable->setItem(row, 6, new QTableWidgetItem(
+                        QString::number(param.getCutterSpeed(), 'f', 1)));
+                    excavationTable->setItem(row, 7, new QTableWidgetItem(
+                        QString::number(param.getCutterTorque(), 'f', 0)));
+                }
+            }
+        } else {
+            // 指定项目
+            QString projectName = projectCombo->currentText();
+            QList<ExcavationParameter> params = excavDAO.getExcavationParametersByTimeRange(
+                selectedProjectId, start, end);
+            
+            for (const ExcavationParameter &param : params) {
+                int row = excavationTable->rowCount();
+                excavationTable->insertRow(row);
+                
+                excavationTable->setItem(row, 0, new QTableWidgetItem(projectName));
+                excavationTable->setItem(row, 1, new QTableWidgetItem(
+                    param.getExcavationTime().toString("yyyy-MM-dd HH:mm:ss")));
+                excavationTable->setItem(row, 2, new QTableWidgetItem(param.getStakeMark()));
+                excavationTable->setItem(row, 3, new QTableWidgetItem(param.getExcavationMode()));
+                excavationTable->setItem(row, 4, new QTableWidgetItem(
+                    QString::number(param.getChamberPressure(), 'f', 2)));
+                excavationTable->setItem(row, 5, new QTableWidgetItem(
+                    QString::number(param.getThrustForce(), 'f', 0)));
+                excavationTable->setItem(row, 6, new QTableWidgetItem(
+                    QString::number(param.getCutterSpeed(), 'f', 1)));
+                excavationTable->setItem(row, 7, new QTableWidgetItem(
+                    QString::number(param.getCutterTorque(), 'f', 0)));
+            }
+        }
+    }
+}
+
+// 导出掘进信息
+void ProjectManagementWindow::onExportExcavation()
+{
+    if (excavationTable->rowCount() == 0) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("警告");
+        msgBox.setText("没有数据可导出！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                             "QLabel { color: black; } "
+                             "QPushButton { background-color: #0078d4; color: white; "
+                             "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    QString fileName = QFileDialog::getSaveFileName(
+        this, "导出掘进信息", 
+        QDir::homePath() + "/excavation_data.csv",
+        "CSV文件 (*.csv)");
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法创建文件！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                             "QLabel { color: black; } "
+                             "QPushButton { background-color: #0078d4; color: white; "
+                             "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    QTextStream out(&file);
+    out.setEncoding(QStringConverter::Utf8);  // Qt 6方式
+    
+    // 写入表头
+    QStringList headers;
+    for (int col = 0; col < excavationTable->columnCount(); ++col) {
+        headers << excavationTable->horizontalHeaderItem(col)->text();
+    }
+    out << headers.join(",") << "\n";
+    
+    // 写入数据
+    for (int row = 0; row < excavationTable->rowCount(); ++row) {
+        if (excavationTable->isRowHidden(row)) {
+            continue;  // 跳过隐藏的行
+        }
+        
+        QStringList rowData;
+        for (int col = 0; col < excavationTable->columnCount(); ++col) {
+            QTableWidgetItem *item = excavationTable->item(row, col);
+            rowData << (item ? item->text() : "");
+        }
+        out << rowData.join(",") << "\n";
+    }
+    
+    file.close();
+    
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("成功");
+    msgBox.setText(QString("数据已导出到：%1").arg(fileName));
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                         "QLabel { color: black; } "
+                         "QPushButton { background-color: #0078d4; color: white; "
+                         "border-radius: 4px; padding: 5px 15px; }");
+    msgBox.exec();
 }

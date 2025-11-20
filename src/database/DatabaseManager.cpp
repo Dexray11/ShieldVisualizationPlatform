@@ -413,6 +413,40 @@ bool DatabaseManager::createTables()
     
     qDebug() << "shield_position表创建成功";
     
+    // 创建掘进参数表
+    QString createExcavationParametersTable = R"(
+        CREATE TABLE IF NOT EXISTS excavation_parameters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            excavation_time DATETIME NOT NULL,
+            stake_mark VARCHAR(50),
+            mileage REAL,
+            excavation_mode VARCHAR(50),
+            chamber_pressure REAL,
+            thrust_force REAL,
+            cutter_speed REAL,
+            cutter_torque REAL,
+            excavation_speed REAL,
+            grouting_pressure REAL,
+            grouting_volume REAL,
+            segment_number VARCHAR(50),
+            excavation_duration INTEGER,
+            idle_duration INTEGER,
+            fault_duration INTEGER,
+            excavation_distance REAL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createExcavationParametersTable)) {
+        lastError = "创建excavation_parameters表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "excavation_parameters表创建成功";
+    
     return true;
 }
 
@@ -686,6 +720,54 @@ bool DatabaseManager::insertDefaultData()
     } else {
         qWarning() << "插入默认盾构机位置失败:" << query.lastError().text();
     }
+    
+    // 插入示例掘进参数数据
+    qDebug() << "开始插入掘进参数数据...";
+    
+    query.prepare("INSERT INTO excavation_parameters "
+                  "(project_id, excavation_time, stake_mark, mileage, excavation_mode, "
+                  "chamber_pressure, thrust_force, cutter_speed, cutter_torque, "
+                  "excavation_speed, grouting_pressure, grouting_volume, segment_number, "
+                  "excavation_duration, idle_duration, fault_duration, excavation_distance) "
+                  "VALUES (:pid, :time, :stake, :mileage, :mode, "
+                  ":pressure, :force, :speed, :torque, "
+                  ":excavSpeed, :groutPressure, :groutVolume, :segment, "
+                  ":duration, :idle, :fault, :distance)");
+    
+    // 生成近期的掘进参数数据（最近10条记录）
+    QDateTime baseTime = QDateTime::fromString("2024-12-03 09:50:00", "yyyy-MM-dd HH:mm:ss");
+    double baseMileage = 3086.0;
+    
+    for (int i = 0; i < 10; ++i) {
+        double currentMileage = baseMileage + i * 0.05;  // 每次掘进约5cm
+        int km = static_cast<int>(currentMileage / 1000.0);
+        double m = currentMileage - (km * 1000.0);
+        QString stakeMark = QString("K%1+%2").arg(km).arg(m, 0, 'f', 2);
+        
+        query.bindValue(":pid", projectId);
+        query.bindValue(":time", baseTime.addSecs(i * 300)); // 每5分钟一条记录
+        query.bindValue(":stake", stakeMark);
+        query.bindValue(":mileage", currentMileage);
+        query.bindValue(":mode", "土压平衡");
+        query.bindValue(":pressure", 0.25 + (i % 3) * 0.02);  // 土压力变化
+        query.bindValue(":force", 2500.0 + (i % 5) * 50.0);   // 推力变化
+        query.bindValue(":speed", 1.5);
+        query.bindValue(":torque", 2000.0 + (i % 4) * 100.0); // 扭矩变化
+        query.bindValue(":excavSpeed", 50.0);
+        query.bindValue(":groutPressure", 2.5);
+        query.bindValue(":groutVolume", 6.0);
+        query.bindValue(":segment", QString("SG-%1").arg(3000 + i, 4, 10, QChar('0')));
+        query.bindValue(":duration", 5);  // 5分钟
+        query.bindValue(":idle", 0);
+        query.bindValue(":fault", 0);
+        query.bindValue(":distance", 0.05);  // 5cm
+        
+        if (!query.exec()) {
+            qWarning() << "插入掘进参数" << stakeMark << "失败:" << query.lastError().text();
+        }
+    }
+    
+    qDebug() << "掘进参数数据插入完成";
     
     qDebug() << "默认数据插入完成";
     return true;
