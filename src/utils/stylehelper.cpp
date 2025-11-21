@@ -316,6 +316,107 @@ QString StyleHelper::getGlobalStyleSheet()
         QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
             border: 2px solid %2;
         }
+        
+        QCalendarWidget {
+            background-color: white;
+        }
+        
+        QCalendarWidget QWidget {
+            background-color: white;
+            color: %8;
+        }
+        
+        QCalendarWidget QTableView {
+            background-color: white;
+            selection-background-color: %2;
+            selection-color: white;
+            alternate-background-color: #f9f9f9;
+        }
+        
+        QCalendarWidget QAbstractItemView:enabled {
+            color: %8;
+            background-color: white;
+            selection-background-color: %2;
+            selection-color: white;
+        }
+        
+        QCalendarWidget QAbstractItemView:disabled {
+            color: #999999;
+        }
+        
+        QCalendarWidget QMenu {
+            background-color: white;
+            color: %8;
+        }
+        
+        QCalendarWidget QSpinBox {
+            background-color: white;
+            color: %8;
+            selection-background-color: %2;
+            selection-color: white;
+        }
+        
+        QCalendarWidget QToolButton {
+            background-color: white;
+            color: %8;
+            border: none;
+            padding: 5px;
+        }
+        
+        QCalendarWidget QToolButton:hover {
+            background-color: %4;
+            border-radius: 5px;
+        }
+        
+        QCalendarWidget QToolButton:pressed {
+            background-color: %2;
+            color: white;
+            border-radius: 5px;
+        }
+        
+        QCalendarWidget QToolButton::menu-indicator {
+            image: none;
+        }
+        
+        QCalendarWidget #qt_calendar_navigationbar {
+            background-color: %1;
+        }
+        
+        QCalendarWidget #qt_calendar_prevmonth,
+        QCalendarWidget #qt_calendar_nextmonth {
+            background-color: transparent;
+            color: white;
+            border: none;
+            padding: 5px;
+            qproperty-icon: none;
+        }
+        
+        QCalendarWidget #qt_calendar_prevmonth:hover,
+        QCalendarWidget #qt_calendar_nextmonth:hover {
+            background-color: %2;
+            border-radius: 5px;
+        }
+        
+        QCalendarWidget #qt_calendar_monthbutton,
+        QCalendarWidget #qt_calendar_yearbutton {
+            background-color: transparent;
+            color: white;
+            border: none;
+            padding: 5px;
+            font-weight: bold;
+        }
+        
+        QCalendarWidget #qt_calendar_monthbutton:hover,
+        QCalendarWidget #qt_calendar_yearbutton:hover {
+            background-color: %2;
+            border-radius: 5px;
+        }
+        
+        QCalendarWidget #qt_calendar_calendarview {
+            background-color: white;
+            selection-background-color: %2;
+            selection-color: white;
+        }
     )").arg(COLOR_PRIMARY)      // %1
         .arg(COLOR_SECONDARY)    // %2
         .arg(COLOR_ACCENT)       // %3

@@ -238,26 +238,31 @@ void ProjectManagementWindow::createProjectOverviewTab()
     QWidget *topWidget = new QWidget(tab);
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     
-    QLineEdit *searchBox = new QLineEdit(topWidget);
-    searchBox->setPlaceholderText("搜索");
-    searchBox->setStyleSheet(StyleHelper::getInputStyle());
-    searchBox->setMaximumWidth(300);
+    projectSearchEdit = new QLineEdit(topWidget);
+    projectSearchEdit->setObjectName("projectSearchEdit");
+    projectSearchEdit->setPlaceholderText("搜索项目名称");
+    projectSearchEdit->setStyleSheet(StyleHelper::getInputStyle());
+    projectSearchEdit->setMaximumWidth(300);
     
-    QPushButton *searchBtn = new QPushButton(topWidget);
-    searchBtn->setIcon(QIcon(":/icons/search.png"));
-    searchBtn->setIconSize(QSize(20, 20));
-    searchBtn->setFixedSize(40, 40);
-    searchBtn->setStyleSheet(StyleHelper::getButtonStyle());
+    searchProjectButton = new QPushButton(topWidget);
+    searchProjectButton->setIcon(QIcon(":/icons/search.png"));
+    searchProjectButton->setIconSize(QSize(20, 20));
+    searchProjectButton->setFixedSize(40, 40);
+    searchProjectButton->setStyleSheet(StyleHelper::getButtonStyle());
+    searchProjectButton->setToolTip("搜索");
+    connect(searchProjectButton, &QPushButton::clicked, this, &ProjectManagementWindow::onSearchProject);
     
-    QPushButton *refreshBtn = new QPushButton(topWidget);
-    refreshBtn->setIcon(QIcon(":/icons/refresh.png"));
-    refreshBtn->setIconSize(QSize(20, 20));
-    refreshBtn->setFixedSize(40, 40);
-    refreshBtn->setStyleSheet(StyleHelper::getButtonStyle());
+    refreshProjectButton = new QPushButton(topWidget);
+    refreshProjectButton->setIcon(QIcon(":/icons/refresh.png"));
+    refreshProjectButton->setIconSize(QSize(20, 20));
+    refreshProjectButton->setFixedSize(40, 40);
+    refreshProjectButton->setStyleSheet(StyleHelper::getButtonStyle());
+    refreshProjectButton->setToolTip("刷新");
+    connect(refreshProjectButton, &QPushButton::clicked, this, &ProjectManagementWindow::onRefreshProject);
     
-    topLayout->addWidget(searchBox);
-    topLayout->addWidget(searchBtn);
-    topLayout->addWidget(refreshBtn);
+    topLayout->addWidget(projectSearchEdit);
+    topLayout->addWidget(searchProjectButton);
+    topLayout->addWidget(refreshProjectButton);
     topLayout->addStretch();
     
     newProjectButton = new QPushButton("新建项目", topWidget);
@@ -325,6 +330,7 @@ void ProjectManagementWindow::createWarningInfoTab()
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     
     QLineEdit *searchBox = new QLineEdit(topWidget);
+    searchBox->setObjectName("warningSearchBox");  // 设置对象名以便后续访问
     searchBox->setPlaceholderText("搜索");
     searchBox->setStyleSheet(StyleHelper::getInputStyle());
     searchBox->setMaximumWidth(250);
@@ -335,6 +341,7 @@ void ProjectManagementWindow::createWarningInfoTab()
     searchBtn->setFixedSize(40, 40);
     searchBtn->setStyleSheet(StyleHelper::getButtonStyle());
     searchBtn->setToolTip("搜索");
+    connect(searchBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onSearchWarning);
     
     QPushButton *refreshBtn = new QPushButton(topWidget);
     refreshBtn->setIcon(QIcon(":/icons/refresh.png"));
@@ -342,6 +349,7 @@ void ProjectManagementWindow::createWarningInfoTab()
     refreshBtn->setFixedSize(40, 40);
     refreshBtn->setStyleSheet(StyleHelper::getButtonStyle());
     refreshBtn->setToolTip("还原");
+    connect(refreshBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onRefreshWarning);
     
     QPushButton *filterBtn = new QPushButton(topWidget);
     filterBtn->setIcon(QIcon(":/icons/filter.png"));
@@ -349,6 +357,7 @@ void ProjectManagementWindow::createWarningInfoTab()
     filterBtn->setFixedSize(40, 40);
     filterBtn->setStyleSheet(StyleHelper::getButtonStyle());
     filterBtn->setToolTip("筛选");
+    connect(filterBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onFilterWarning);
     
     QPushButton *exportBtn = new QPushButton(topWidget);
     exportBtn->setIcon(QIcon(":/icons/export.png"));
@@ -356,6 +365,7 @@ void ProjectManagementWindow::createWarningInfoTab()
     exportBtn->setFixedSize(40, 40);
     exportBtn->setStyleSheet(StyleHelper::getButtonStyle());
     exportBtn->setToolTip("导出");
+    connect(exportBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onExportWarning);
     
     topLayout->addWidget(searchBox);
     topLayout->addWidget(searchBtn);
@@ -590,8 +600,13 @@ void ProjectManagementWindow::loadProjectData()
     for (int row = 0; row < projects.size(); row++) {
         const Project &project = projects[row];
         
+        // 确保所有行都显示（修复刷新后隐藏行的问题）
+        projectTable->setRowHidden(row, false);
+        
         // 填充项目数据
-        projectTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+        QTableWidgetItem *nameItem = new QTableWidgetItem(project.getProjectName());
+        nameItem->setData(Qt::UserRole, project.getProjectId());  // 存储项目ID
+        projectTable->setItem(row, 0, nameItem);
         projectTable->setItem(row, 1, new QTableWidgetItem(project.getBrief()));
         // 组合经纬度坐标
         QString coordinates = QString("%1,%2").arg(project.getLatitude()).arg(project.getLongitude());
@@ -604,6 +619,8 @@ void ProjectManagementWindow::loadProjectData()
         // 设置居中对齐
         for (int col = 0; col < 7; col++) {
             projectTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
+            // 将项目ID存储在每个单元格的UserRole中
+            projectTable->item(row, col)->setData(Qt::UserRole, project.getProjectId());
         }
         
         // 创建操作按钮
@@ -637,43 +654,15 @@ void ProjectManagementWindow::loadProjectData()
         editBtn->setFixedSize(70, 32);
         deleteBtn->setFixedSize(70, 32);
         
-        connect(editBtn, &QPushButton::clicked, [this, row]() { onEditProject(row); });
-        connect(deleteBtn, &QPushButton::clicked, [this, row]() { onDeleteProject(row); });
+        // 使用项目ID而不是行号
+        int projectId = project.getProjectId();
+        connect(editBtn, &QPushButton::clicked, [this, projectId]() { onEditProject(projectId); });
+        connect(deleteBtn, &QPushButton::clicked, [this, projectId]() { onDeleteProject(projectId); });
         
         operationLayout->addWidget(editBtn);
         operationLayout->addWidget(deleteBtn);
         
         projectTable->setCellWidget(row, 7, operationWidget);
-    }
-    
-    // ========== 加载预警信息数据 ==========
-    QList<Warning> warnings = warningDAO.getAllWarnings();
-    warningTable->setRowCount(warnings.size());
-    
-    for (int row = 0; row < warnings.size(); row++) {
-        const Warning &warning = warnings[row];
-        
-        // 根据项目ID获取项目名称
-        Project project = projectDAO.getProjectById(warning.getProjectId());
-        QString projectName = project.isValid() ? project.getProjectName() : "未知项目";
-        
-        warningTable->setItem(row, 0, new QTableWidgetItem(projectName));
-        warningTable->setItem(row, 1, new QTableWidgetItem(QString::number(warning.getWarningId())));
-        warningTable->setItem(row, 2, new QTableWidgetItem(warning.getWarningLevel()));
-        warningTable->setItem(row, 3, new QTableWidgetItem(warning.getWarningType()));
-        // 组合经纬度坐标
-        QString warningCoordinates = QString("%1,%2").arg(warning.getLatitude()).arg(warning.getLongitude());
-        warningTable->setItem(row, 4, new QTableWidgetItem(warningCoordinates));
-        // 深度
-        warningTable->setItem(row, 5, new QTableWidgetItem(QString::number(warning.getDepth())));
-        // 阈值
-        warningTable->setItem(row, 6, new QTableWidgetItem(QString::number(warning.getThresholdValue())));
-        // 时间 - 将QDateTime转换为QString
-        warningTable->setItem(row, 7, new QTableWidgetItem(warning.getWarningTime().toString("yyyy-MM-dd hh:mm:ss")));
-        
-        for (int col = 0; col < 8; col++) {
-            warningTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
-        }
     }
     
     // ========== 加载掘进信息数据（暂时清空，等待数据） ==========
@@ -790,90 +779,234 @@ void ProjectManagementWindow::showNewProjectDialog()
 {
     QDialog dialog(this);
     dialog.setWindowTitle("新建项目");
-    dialog.setFixedSize(500, 600);
+    dialog.setFixedSize(700, 680);
     dialog.setStyleSheet("QDialog { background-color: white; }");
 
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
-    layout->setSpacing(15);
-    layout->setContentsMargins(30, 30, 30, 30);
+    layout->setSpacing(20);
+    layout->setContentsMargins(40, 40, 40, 40);
 
     QFormLayout *formLayout = new QFormLayout();
-    formLayout->setSpacing(12);
+    formLayout->setSpacing(18);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+    formLayout->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
 
+    // 创建标签样式
+    QString labelStyle = "font-size: 14px; font-weight: bold; color: #333;";
+    
+    // 项目名称（必填）
+    QLabel *nameLabel = new QLabel("项目名称*：", &dialog);
+    nameLabel->setStyleSheet(labelStyle);
     QLineEdit *nameEdit = new QLineEdit(&dialog);
-    nameEdit->setPlaceholderText("演示项目");
+    nameEdit->setPlaceholderText("请输入项目名称");
     nameEdit->setStyleSheet(StyleHelper::getInputStyle());
+    nameEdit->setMinimumWidth(400);
 
+    // 项目简介（可选）
+    QLabel *briefLabel = new QLabel("项目简介：", &dialog);
+    briefLabel->setStyleSheet(labelStyle);
     QLineEdit *briefEdit = new QLineEdit(&dialog);
-    briefEdit->setPlaceholderText("演示简介");
+    briefEdit->setPlaceholderText("请输入项目简介");
     briefEdit->setStyleSheet(StyleHelper::getInputStyle());
 
+    // 经纬度坐标（必填）
+    QLabel *coordsLabel = new QLabel("经纬度坐标*：", &dialog);
+    coordsLabel->setStyleSheet(labelStyle);
     QLineEdit *coordsEdit = new QLineEdit(&dialog);
-    coordsEdit->setPlaceholderText("演示坐标");
+    coordsEdit->setPlaceholderText("格式：经度,纬度，如：120.370,36.065");
     coordsEdit->setStyleSheet(StyleHelper::getInputStyle());
-    QPushButton *importCoordsBtn = new QPushButton("导入", &dialog);
 
+    // 施工单位（必填）
+    QLabel *unitLabel = new QLabel("施工单位*：", &dialog);
+    unitLabel->setStyleSheet(labelStyle);
     QLineEdit *unitEdit = new QLineEdit(&dialog);
-    unitEdit->setPlaceholderText("演示施工单位");
+    unitEdit->setPlaceholderText("请输入施工单位");
     unitEdit->setStyleSheet(StyleHelper::getInputStyle());
 
+    // 开始时间（必填）
+    QLabel *dateLabel = new QLabel("开始时间*：", &dialog);
+    dateLabel->setStyleSheet(labelStyle);
     QDateEdit *dateEdit = new QDateEdit(QDate::currentDate(), &dialog);
     dateEdit->setCalendarPopup(true);
     dateEdit->setStyleSheet(StyleHelper::getInputStyle());
+    dateEdit->setDisplayFormat("yyyy-MM-dd");
 
+    // 施工进度（可选，默认0）
+    QLabel *progressLabel = new QLabel("施工进度：", &dialog);
+    progressLabel->setStyleSheet(labelStyle);
     QSpinBox *progressSpin = new QSpinBox(&dialog);
     progressSpin->setRange(0, 100);
-    progressSpin->setValue(91);
+    progressSpin->setValue(0);
     progressSpin->setSuffix("%");
     progressSpin->setStyleSheet(StyleHelper::getInputStyle());
 
+    // 地理位置（可选）
+    QLabel *locationLabel = new QLabel("地理位置：", &dialog);
+    locationLabel->setStyleSheet(labelStyle);
     QLineEdit *locationEdit = new QLineEdit(&dialog);
-    locationEdit->setPlaceholderText("山东青岛");
+    locationEdit->setPlaceholderText("如：山东青岛");
     locationEdit->setStyleSheet(StyleHelper::getInputStyle());
-    QPushButton *importLocationBtn = new QPushButton("导入", &dialog);
 
-    QPushButton *import2DBtn = new QPushButton("导入", &dialog);
-    QPushButton *import3DBtn = new QPushButton("导入", &dialog);
+    // 联系人1
+    QLabel *contact1NameLabel = new QLabel("联系人1：", &dialog);
+    contact1NameLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact1NameEdit = new QLineEdit(&dialog);
+    contact1NameEdit->setPlaceholderText("联系人姓名");
+    contact1NameEdit->setStyleSheet(StyleHelper::getInputStyle());
+    
+    QLabel *contact1PhoneLabel = new QLabel("联系电话1：", &dialog);
+    contact1PhoneLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact1PhoneEdit = new QLineEdit(&dialog);
+    contact1PhoneEdit->setPlaceholderText("联系人电话");
+    contact1PhoneEdit->setStyleSheet(StyleHelper::getInputStyle());
 
-    formLayout->addRow("名称：", nameEdit);
-    formLayout->addRow("简介：", briefEdit);
+    // 联系人2
+    QLabel *contact2NameLabel = new QLabel("联系人2：", &dialog);
+    contact2NameLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact2NameEdit = new QLineEdit(&dialog);
+    contact2NameEdit->setPlaceholderText("联系人姓名");
+    contact2NameEdit->setStyleSheet(StyleHelper::getInputStyle());
     
-    QHBoxLayout *coordsLayout = new QHBoxLayout();
-    coordsLayout->addWidget(coordsEdit);
-    coordsLayout->addWidget(importCoordsBtn);
-    formLayout->addRow("经纬度坐标：", coordsLayout);
-    
-    formLayout->addRow("施工单位：", unitEdit);
-    formLayout->addRow("开始时间：", dateEdit);
-    formLayout->addRow("施工进度：", progressSpin);
-    
-    QHBoxLayout *locationLayout = new QHBoxLayout();
-    locationLayout->addWidget(locationEdit);
-    locationLayout->addWidget(importLocationBtn);
-    formLayout->addRow("地理位置：", locationLayout);
-    
-    formLayout->addRow("二维地质图：", import2DBtn);
-    formLayout->addRow("三维地质图：", import3DBtn);
+    QLabel *contact2PhoneLabel = new QLabel("联系电话2：", &dialog);
+    contact2PhoneLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact2PhoneEdit = new QLineEdit(&dialog);
+    contact2PhoneEdit->setPlaceholderText("联系人电话");
+    contact2PhoneEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    formLayout->addRow(nameLabel, nameEdit);
+    formLayout->addRow(briefLabel, briefEdit);
+    formLayout->addRow(coordsLabel, coordsEdit);
+    formLayout->addRow(unitLabel, unitEdit);
+    formLayout->addRow(dateLabel, dateEdit);
+    formLayout->addRow(progressLabel, progressSpin);
+    formLayout->addRow(locationLabel, locationEdit);
+    formLayout->addRow(contact1NameLabel, contact1NameEdit);
+    formLayout->addRow(contact1PhoneLabel, contact1PhoneEdit);
+    formLayout->addRow(contact2NameLabel, contact2NameEdit);
+    formLayout->addRow(contact2PhoneLabel, contact2PhoneEdit);
 
     layout->addLayout(formLayout);
+
+    // 提示标签
+    QLabel *tipLabel = new QLabel("* 为必填项", &dialog);
+    tipLabel->setStyleSheet("color: #999; font-size: 12px;");
+    layout->addWidget(tipLabel);
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     buttonBox->button(QDialogButtonBox::Ok)->setText("确认");
     buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    buttonBox->button(QDialogButtonBox::Ok)->setStyleSheet(StyleHelper::getButtonStyle());
+    buttonBox->button(QDialogButtonBox::Cancel)->setStyleSheet(StyleHelper::getButtonStyle("#999999"));
     connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
     layout->addWidget(buttonBox);
 
     if (dialog.exec() == QDialog::Accepted) {
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("提示");
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.setText("项目创建成功！");
-        msgBox.setStyleSheet("QMessageBox { background-color: white; }");
-        msgBox.exec();
-        loadProjectData();
+        // 验证必填字段
+        QString name = nameEdit->text().trimmed();
+        QString coords = coordsEdit->text().trimmed();
+        QString unit = unitEdit->text().trimmed();
+        
+        if (name.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("项目名称不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        if (coords.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        if (unit.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("施工单位不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        // 解析经纬度坐标
+        QStringList coordsList = coords.split(",");
+        if (coordsList.size() != 2) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标格式错误！\n正确格式：经度,纬度\n示例：120.370,36.065");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        bool lonOk, latOk;
+        double longitude = coordsList[0].trimmed().toDouble(&lonOk);
+        double latitude = coordsList[1].trimmed().toDouble(&latOk);
+        
+        if (!lonOk || !latOk) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标必须是数字！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        // 验证坐标范围
+        if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标超出有效范围！\n经度：-180到180\n纬度：-90到90");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        // 创建Project对象
+        Project project;
+        project.setProjectName(name);
+        project.setBrief(briefEdit->text().trimmed());
+        project.setLatitude(latitude);
+        project.setLongitude(longitude);
+        project.setConstructionUnit(unit);
+        project.setStartDate(dateEdit->date().toString("yyyy-MM-dd"));
+        project.setProgress(progressSpin->value());
+        project.setLocation(locationEdit->text().trimmed());
+        project.setStatus("active");  // 新建项目默认为活动状态
+        project.setEmergencyContact1Name(contact1NameEdit->text().trimmed());
+        project.setEmergencyContact1Phone(contact1PhoneEdit->text().trimmed());
+        project.setEmergencyContact2Name(contact2NameEdit->text().trimmed());
+        project.setEmergencyContact2Phone(contact2PhoneEdit->text().trimmed());
+        
+        // 保存到数据库
+        ProjectDAO projectDAO;
+        if (projectDAO.insertProject(project)) {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("成功");
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setText(QString("项目 '%1' 创建成功！").arg(name));
+            msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+            msgBox.exec();
+            
+            // 重新加载项目数据
+            loadProjectData();
+        } else {
+            QMessageBox::critical(this, "错误", "项目创建失败：" + projectDAO.getLastError());
+        }
     }
 }
 
@@ -889,40 +1022,302 @@ void ProjectManagementWindow::onNewProjectClicked()
     showNewProjectDialog();
 }
 
-void ProjectManagementWindow::onEditProject(int row)
+void ProjectManagementWindow::onEditProject(int projectId)
 {
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("编辑项目");
-    msgBox.setIcon(QMessageBox::Information);
-    msgBox.setText(QString("编辑项目：%1").arg(projectTable->item(row, 0)->text()));
-    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
-    msgBox.exec();
+    // 从数据库加载项目信息
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectById(projectId);
+    
+    if (!project.isValid()) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法加载项目信息！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+        msgBox.exec();
+        return;
+    }
+    
+    // 创建编辑对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("编辑项目");
+    dialog.setFixedSize(700, 680);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(20);
+    layout->setContentsMargins(40, 40, 40, 40);
+
+    QFormLayout *formLayout = new QFormLayout();
+    formLayout->setSpacing(18);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+    formLayout->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
+
+    // 创建标签样式
+    QString labelStyle = "font-size: 14px; font-weight: bold; color: #333;";
+    
+    // 项目名称（必填）
+    QLabel *nameLabel = new QLabel("项目名称*：", &dialog);
+    nameLabel->setStyleSheet(labelStyle);
+    QLineEdit *nameEdit = new QLineEdit(&dialog);
+    nameEdit->setText(project.getProjectName());
+    nameEdit->setStyleSheet(StyleHelper::getInputStyle());
+    nameEdit->setMinimumWidth(400);
+
+    // 项目简介（可选）
+    QLabel *briefLabel = new QLabel("项目简介：", &dialog);
+    briefLabel->setStyleSheet(labelStyle);
+    QLineEdit *briefEdit = new QLineEdit(&dialog);
+    briefEdit->setText(project.getBrief());
+    briefEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 经纬度坐标（必填）
+    QLabel *coordsLabel = new QLabel("经纬度坐标*：", &dialog);
+    coordsLabel->setStyleSheet(labelStyle);
+    QLineEdit *coordsEdit = new QLineEdit(&dialog);
+    coordsEdit->setText(QString("%1,%2").arg(project.getLongitude()).arg(project.getLatitude()));
+    coordsEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 施工单位（必填）
+    QLabel *unitLabel = new QLabel("施工单位*：", &dialog);
+    unitLabel->setStyleSheet(labelStyle);
+    QLineEdit *unitEdit = new QLineEdit(&dialog);
+    unitEdit->setText(project.getConstructionUnit());
+    unitEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 开始时间（必填）
+    QLabel *dateLabel = new QLabel("开始时间*：", &dialog);
+    dateLabel->setStyleSheet(labelStyle);
+    QDateEdit *dateEdit = new QDateEdit(&dialog);
+    dateEdit->setDate(QDate::fromString(project.getStartDate(), "yyyy-MM-dd"));
+    dateEdit->setCalendarPopup(true);
+    dateEdit->setStyleSheet(StyleHelper::getInputStyle());
+    dateEdit->setDisplayFormat("yyyy-MM-dd");
+
+    // 施工进度（可选，默认0）
+    QLabel *progressLabel = new QLabel("施工进度：", &dialog);
+    progressLabel->setStyleSheet(labelStyle);
+    QSpinBox *progressSpin = new QSpinBox(&dialog);
+    progressSpin->setRange(0, 100);
+    progressSpin->setValue(static_cast<int>(project.getProgress()));
+    progressSpin->setSuffix("%");
+    progressSpin->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 地理位置（可选）
+    QLabel *locationLabel = new QLabel("地理位置：", &dialog);
+    locationLabel->setStyleSheet(labelStyle);
+    QLineEdit *locationEdit = new QLineEdit(&dialog);
+    locationEdit->setText(project.getLocation());
+    locationEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 联系人1
+    QLabel *contact1NameLabel = new QLabel("联系人1：", &dialog);
+    contact1NameLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact1NameEdit = new QLineEdit(&dialog);
+    contact1NameEdit->setText(project.getEmergencyContact1Name());
+    contact1NameEdit->setStyleSheet(StyleHelper::getInputStyle());
+    
+    QLabel *contact1PhoneLabel = new QLabel("联系电话1：", &dialog);
+    contact1PhoneLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact1PhoneEdit = new QLineEdit(&dialog);
+    contact1PhoneEdit->setText(project.getEmergencyContact1Phone());
+    contact1PhoneEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    // 联系人2
+    QLabel *contact2NameLabel = new QLabel("联系人2：", &dialog);
+    contact2NameLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact2NameEdit = new QLineEdit(&dialog);
+    contact2NameEdit->setText(project.getEmergencyContact2Name());
+    contact2NameEdit->setStyleSheet(StyleHelper::getInputStyle());
+    
+    QLabel *contact2PhoneLabel = new QLabel("联系电话2：", &dialog);
+    contact2PhoneLabel->setStyleSheet(labelStyle);
+    QLineEdit *contact2PhoneEdit = new QLineEdit(&dialog);
+    contact2PhoneEdit->setText(project.getEmergencyContact2Phone());
+    contact2PhoneEdit->setStyleSheet(StyleHelper::getInputStyle());
+
+    formLayout->addRow(nameLabel, nameEdit);
+    formLayout->addRow(briefLabel, briefEdit);
+    formLayout->addRow(coordsLabel, coordsEdit);
+    formLayout->addRow(unitLabel, unitEdit);
+    formLayout->addRow(dateLabel, dateEdit);
+    formLayout->addRow(progressLabel, progressSpin);
+    formLayout->addRow(locationLabel, locationEdit);
+    formLayout->addRow(contact1NameLabel, contact1NameEdit);
+    formLayout->addRow(contact1PhoneLabel, contact1PhoneEdit);
+    formLayout->addRow(contact2NameLabel, contact2NameEdit);
+    formLayout->addRow(contact2PhoneLabel, contact2PhoneEdit);
+
+    layout->addLayout(formLayout);
+
+    // 提示标签
+    QLabel *tipLabel = new QLabel("* 为必填项", &dialog);
+    tipLabel->setStyleSheet("color: #999; font-size: 12px;");
+    layout->addWidget(tipLabel);
+
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("保存");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    buttonBox->button(QDialogButtonBox::Ok)->setStyleSheet(StyleHelper::getButtonStyle());
+    buttonBox->button(QDialogButtonBox::Cancel)->setStyleSheet(StyleHelper::getButtonStyle("#999999"));
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    layout->addWidget(buttonBox);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // 验证必填字段
+        QString name = nameEdit->text().trimmed();
+        QString coords = coordsEdit->text().trimmed();
+        QString unit = unitEdit->text().trimmed();
+        
+        if (name.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("项目名称不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        if (coords.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        if (unit.isEmpty()) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("施工单位不能为空！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        // 解析经纬度坐标
+        QStringList coordsList = coords.split(",");
+        if (coordsList.size() != 2) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标格式错误！\n正确格式：经度,纬度\n示例：120.370,36.065");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        bool lonOk, latOk;
+        double longitude = coordsList[0].trimmed().toDouble(&lonOk);
+        double latitude = coordsList[1].trimmed().toDouble(&latOk);
+        
+        if (!lonOk || !latOk) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("验证失败");
+            msgBox.setText("经纬度坐标必须是有效的数字！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            return;
+        }
+        
+        // 更新项目对象
+        project.setProjectName(name);
+        project.setBrief(briefEdit->text().trimmed());
+        project.setLatitude(latitude);
+        project.setLongitude(longitude);
+        project.setConstructionUnit(unit);
+        project.setStartDate(dateEdit->date().toString("yyyy-MM-dd"));
+        project.setProgress(progressSpin->value());
+        project.setLocation(locationEdit->text().trimmed());
+        project.setEmergencyContact1Name(contact1NameEdit->text().trimmed());
+        project.setEmergencyContact1Phone(contact1PhoneEdit->text().trimmed());
+        project.setEmergencyContact2Name(contact2NameEdit->text().trimmed());
+        project.setEmergencyContact2Phone(contact2PhoneEdit->text().trimmed());
+        
+        // 保存到数据库
+        if (projectDAO.updateProject(project)) {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setWindowTitle("成功");
+            msgBox.setText("项目信息已更新！");
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+            
+            // 重新加载数据
+            loadProjectData();
+        } else {
+            QMessageBox msgBox(this);
+            msgBox.setIcon(QMessageBox::Critical);
+            msgBox.setWindowTitle("错误");
+            msgBox.setText("更新项目失败：" + projectDAO.getLastError());
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            msgBox.exec();
+        }
+    }
 }
 
-void ProjectManagementWindow::onDeleteProject(int row)
+void ProjectManagementWindow::onDeleteProject(int projectId)
 {
+    // 从数据库加载项目信息
+    ProjectDAO projectDAO;
+    Project project = projectDAO.getProjectById(projectId);
+    
+    if (!project.isValid()) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法加载项目信息！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+        msgBox.exec();
+        return;
+    }
+    
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("删除项目");
     msgBox.setIcon(QMessageBox::Question);
-    msgBox.setText(QString("确定要删除项目 '%1' 吗？").arg(projectTable->item(row, 0)->text()));
+    msgBox.setText(QString("确定要删除项目 '%1' 吗？\n\n此操作将同时删除该项目的所有相关数据（预警信息、掘进信息、补勘数据等）。").arg(project.getProjectName()));
     msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setStyleSheet("QMessageBox { background-color: white; }");
+    msgBox.setDefaultButton(QMessageBox::No);
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
     
     if (msgBox.exec() == QMessageBox::Yes) {
-        projectTable->removeRow(row);
-        QMessageBox resultBox(this);
-        resultBox.setWindowTitle("提示");
-        resultBox.setIcon(QMessageBox::Information);
-        resultBox.setText("项目已删除！");
-        resultBox.setStyleSheet("QMessageBox { background-color: white; }");
-        resultBox.exec();
+        if (projectDAO.deleteProject(projectId)) {
+            QMessageBox resultBox(this);
+            resultBox.setWindowTitle("提示");
+            resultBox.setIcon(QMessageBox::Information);
+            resultBox.setText("项目已删除！");
+            resultBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            resultBox.exec();
+            
+            // 重新加载数据
+            loadProjectData();
+        } else {
+            QMessageBox errorBox(this);
+            errorBox.setWindowTitle("错误");
+            errorBox.setIcon(QMessageBox::Critical);
+            errorBox.setText("删除项目失败：" + projectDAO.getLastError());
+            errorBox.setStyleSheet("QMessageBox { background-color: white; } QLabel { color: black; }");
+            errorBox.exec();
+        }
     }
 }
 
 void ProjectManagementWindow::onTabChanged(int index)
 {
+    // 当切换到预警信息标签页（index=1）时加载数据
+    if (index == 1) {
+        loadWarningData();
+    }
     // 当切换到掘进信息标签页（index=2）时加载数据
-    if (index == 2) {
+    else if (index == 2) {
         loadExcavationData();
     }
     // 当切换到补勘数据标签页（index=3）时加载数据
@@ -1808,4 +2203,364 @@ void ProjectManagementWindow::onExportSupplementary()
     msgBox.exec();
     
     qDebug() << "补勘数据已导出到:" << fileName;
+}
+
+void ProjectManagementWindow::onSearchProject()
+{
+    QString searchText = projectSearchEdit->text().trimmed();
+    
+    if (searchText.isEmpty()) {
+        // 如果搜索框为空，显示所有行
+        for (int row = 0; row < projectTable->rowCount(); row++) {
+            projectTable->setRowHidden(row, false);
+        }
+        return;
+    }
+    
+    // 遍历表格，隐藏不匹配的行
+    for (int row = 0; row < projectTable->rowCount(); row++) {
+        QString projectName = projectTable->item(row, 0)->text();
+        bool match = projectName.contains(searchText, Qt::CaseInsensitive);
+        projectTable->setRowHidden(row, !match);
+    }
+}
+
+void ProjectManagementWindow::onRefreshProject()
+{
+    // 清空搜索框
+    projectSearchEdit->clear();
+    
+    // 重新加载所有项目数据
+    loadProjectData();
+    
+    qDebug() << "项目列表已刷新";
+}
+
+// ==================== 预警信息功能 ====================
+
+// 搜索预警信息
+void ProjectManagementWindow::onSearchWarning()
+{
+    QLineEdit *searchBox = warningTable->parentWidget()->findChild<QLineEdit*>("warningSearchBox");
+    if (!searchBox) return;
+    
+    QString keyword = searchBox->text().trimmed();
+    if (keyword.isEmpty()) {
+        // 如果搜索框为空，显示所有行
+        for (int row = 0; row < warningTable->rowCount(); ++row) {
+            warningTable->setRowHidden(row, false);
+        }
+        return;
+    }
+    
+    // 隐藏不匹配的行
+    for (int row = 0; row < warningTable->rowCount(); ++row) {
+        bool match = false;
+        for (int col = 0; col < warningTable->columnCount(); ++col) {
+            QTableWidgetItem *item = warningTable->item(row, col);
+            if (item && item->text().contains(keyword, Qt::CaseInsensitive)) {
+                match = true;
+                break;
+            }
+        }
+        warningTable->setRowHidden(row, !match);
+    }
+}
+
+// 刷新预警信息
+void ProjectManagementWindow::onRefreshWarning()
+{
+    loadWarningData();
+    
+    // 清空搜索框
+    QLineEdit *searchBox = warningTable->parentWidget()->findChild<QLineEdit*>("warningSearchBox");
+    if (searchBox) {
+        searchBox->clear();
+    }
+    
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("提示");
+    msgBox.setText("数据已刷新");
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                         "QLabel { color: black; } "
+                         "QPushButton { background-color: #0078d4; color: white; "
+                         "border-radius: 4px; padding: 5px 15px; }");
+    msgBox.exec();
+}
+
+// 筛选预警信息
+void ProjectManagementWindow::onFilterWarning()
+{
+    // 创建筛选对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("筛选预警信息");
+    dialog.setFixedSize(650, 550);
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+    
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(20);
+    layout->setContentsMargins(40, 40, 40, 40);
+    
+    // 项目选择
+    QLabel *projectLabel = new QLabel("选择项目：", &dialog);
+    projectLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    QComboBox *projectCombo = new QComboBox(&dialog);
+    projectCombo->setStyleSheet(StyleHelper::getInputStyle());
+    projectCombo->addItem("全部项目", 0);
+    
+    ProjectDAO projectDAO;
+    QList<Project> projects = projectDAO.getAllProjects();
+    for (const Project &project : projects) {
+        projectCombo->addItem(project.getProjectName(), project.getProjectId());
+    }
+    
+    // 预警级别
+    QLabel *levelLabel = new QLabel("预警级别：", &dialog);
+    levelLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    QComboBox *levelCombo = new QComboBox(&dialog);
+    levelCombo->setStyleSheet(StyleHelper::getInputStyle());
+    levelCombo->addItem("全部", "");
+    levelCombo->addItem("A级", "A");
+    levelCombo->addItem("B级", "B");
+    levelCombo->addItem("C级", "C");
+    levelCombo->addItem("D级", "D");
+    
+    // 预警类别
+    QLabel *typeLabel = new QLabel("预警类别：", &dialog);
+    typeLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    QComboBox *typeCombo = new QComboBox(&dialog);
+    typeCombo->setStyleSheet(StyleHelper::getInputStyle());
+    typeCombo->addItem("全部", "");
+    typeCombo->addItem("岩溶发育", "岩溶发育");
+    typeCombo->addItem("涌水涌泥", "涌水涌泥");
+    typeCombo->addItem("岩层断裂", "岩层断裂");
+    typeCombo->addItem("瓦斯区域", "瓦斯区域");
+    
+    // 时间范围
+    QLabel *timeLabel = new QLabel("时间范围：", &dialog);
+    timeLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    QHBoxLayout *timeLayout = new QHBoxLayout();
+    timeLayout->setSpacing(10);
+    
+    QDateTimeEdit *startTime = new QDateTimeEdit(&dialog);
+    startTime->setDateTime(QDateTime::currentDateTime().addDays(-365));  // 改为过去365天
+    startTime->setDisplayFormat("yyyy-MM-dd HH:mm");
+    startTime->setCalendarPopup(true);  // 启用日历弹出
+    startTime->setStyleSheet(StyleHelper::getInputStyle());
+    
+    QLabel *toLabel = new QLabel("至", &dialog);
+    toLabel->setStyleSheet("color: #666; font-size: 14px;");
+    
+    QDateTimeEdit *endTime = new QDateTimeEdit(&dialog);
+    endTime->setDateTime(QDateTime::currentDateTime().addDays(1));  // 设为明天，确保包含今天的数据
+    endTime->setDisplayFormat("yyyy-MM-dd HH:mm");
+    endTime->setCalendarPopup(true);  // 启用日历弹出
+    endTime->setStyleSheet(StyleHelper::getInputStyle());
+    
+    timeLayout->addWidget(startTime);
+    timeLayout->addWidget(toLabel);
+    timeLayout->addWidget(endTime);
+    
+    layout->addWidget(projectLabel);
+    layout->addWidget(projectCombo);
+    layout->addWidget(levelLabel);
+    layout->addWidget(levelCombo);
+    layout->addWidget(typeLabel);
+    layout->addWidget(typeCombo);
+    layout->addWidget(timeLabel);
+    layout->addLayout(timeLayout);
+    layout->addStretch();
+    
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("筛选");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    buttonBox->button(QDialogButtonBox::Ok)->setStyleSheet(StyleHelper::getButtonStyle());
+    buttonBox->button(QDialogButtonBox::Cancel)->setStyleSheet(StyleHelper::getButtonStyle("#999999"));
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    
+    layout->addWidget(buttonBox);
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        int selectedProjectId = projectCombo->currentData().toInt();
+        QString selectedLevel = levelCombo->currentData().toString();
+        QString selectedType = typeCombo->currentData().toString();
+        QDateTime start = startTime->dateTime();
+        QDateTime end = endTime->dateTime();
+        
+        // 首先显示所有行（重置筛选状态）
+        for (int row = 0; row < warningTable->rowCount(); ++row) {
+            warningTable->setRowHidden(row, false);
+        }
+        
+        // 检查是否所有筛选条件都是"全部"
+        bool hasFilter = (selectedProjectId != 0) || (!selectedLevel.isEmpty()) || (!selectedType.isEmpty());
+        
+        // 如果没有任何筛选条件，直接返回（显示所有数据）
+        if (!hasFilter) {
+            qDebug() << "未设置任何筛选条件，显示所有预警数据";
+            return;
+        }
+        
+        // 遍历表格，应用筛选条件
+        int matchCount = 0;
+        for (int row = 0; row < warningTable->rowCount(); ++row) {
+            bool match = true;
+            
+            // 项目筛选
+            if (selectedProjectId != 0) {
+                QString projectName = projectCombo->currentText();
+                if (warningTable->item(row, 0)->text() != projectName) {
+                    match = false;
+                }
+            }
+            
+            // 预警级别筛选
+            if (!selectedLevel.isEmpty() && match) {
+                if (warningTable->item(row, 2)->text() != selectedLevel) {
+                    match = false;
+                }
+            }
+            
+            // 预警类别筛选
+            if (!selectedType.isEmpty() && match) {
+                if (warningTable->item(row, 3)->text() != selectedType) {
+                    match = false;
+                }
+            }
+            
+            // 时间筛选（只有在有其他筛选条件时才应用）
+            if (match && hasFilter) {
+                QString timeStr = warningTable->item(row, 7)->text();
+                QDateTime warningTime = QDateTime::fromString(timeStr, "yyyy-MM-dd hh:mm:ss");
+                if (warningTime.isValid() && (warningTime < start || warningTime > end)) {
+                    match = false;
+                }
+            }
+            
+            warningTable->setRowHidden(row, !match);
+            if (match) {
+                matchCount++;
+            }
+        }
+        
+        qDebug() << "预警筛选完成，显示" << matchCount << "条记录";
+    }
+}
+
+// 导出预警信息
+void ProjectManagementWindow::onExportWarning()
+{
+    if (warningTable->rowCount() == 0) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("警告");
+        msgBox.setText("没有数据可导出！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                             "QLabel { color: black; } "
+                             "QPushButton { background-color: #0078d4; color: white; "
+                             "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    QString fileName = QFileDialog::getSaveFileName(
+        this, "导出预警信息", 
+        QDir::homePath() + "/warning_data.csv",
+        "CSV文件 (*.csv)");
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法创建文件！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                             "QLabel { color: black; } "
+                             "QPushButton { background-color: #0078d4; color: white; "
+                             "border-radius: 4px; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    QTextStream out(&file);
+    out.setEncoding(QStringConverter::Utf8);
+    
+    // 写入表头
+    QStringList headers;
+    for (int col = 0; col < warningTable->columnCount(); ++col) {
+        headers << warningTable->horizontalHeaderItem(col)->text();
+    }
+    out << headers.join(",") << "\n";
+    
+    // 写入数据
+    for (int row = 0; row < warningTable->rowCount(); ++row) {
+        if (warningTable->isRowHidden(row)) {
+            continue;  // 跳过隐藏的行
+        }
+        
+        QStringList rowData;
+        for (int col = 0; col < warningTable->columnCount(); ++col) {
+            QTableWidgetItem *item = warningTable->item(row, col);
+            rowData << (item ? item->text() : "");
+        }
+        out << rowData.join(",") << "\n";
+    }
+    
+    file.close();
+    
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("成功");
+    msgBox.setText(QString("预警信息已成功导出到：\n%1").arg(fileName));
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                         "QLabel { color: black; } "
+                         "QPushButton { background-color: #0078d4; color: white; "
+                         "border-radius: 4px; padding: 5px 15px; }");
+    msgBox.exec();
+}
+
+// 加载预警信息数据
+void ProjectManagementWindow::loadWarningData()
+{
+    ProjectDAO projectDAO;
+    WarningDAO warningDAO;
+    
+    QList<Warning> warnings = warningDAO.getAllWarnings();
+    warningTable->setRowCount(warnings.size());
+    
+    for (int row = 0; row < warnings.size(); row++) {
+        const Warning &warning = warnings[row];
+        
+        // 确保所有行都显示
+        warningTable->setRowHidden(row, false);
+        
+        // 根据项目ID获取项目名称
+        Project project = projectDAO.getProjectById(warning.getProjectId());
+        QString projectName = project.isValid() ? project.getProjectName() : "未知项目";
+        
+        warningTable->setItem(row, 0, new QTableWidgetItem(projectName));
+        warningTable->setItem(row, 1, new QTableWidgetItem(QString::number(warning.getWarningId())));
+        warningTable->setItem(row, 2, new QTableWidgetItem(warning.getWarningLevel()));
+        warningTable->setItem(row, 3, new QTableWidgetItem(warning.getWarningType()));
+        // 组合经纬度坐标
+        QString warningCoordinates = QString("%1,%2").arg(warning.getLatitude()).arg(warning.getLongitude());
+        warningTable->setItem(row, 4, new QTableWidgetItem(warningCoordinates));
+        // 深度
+        warningTable->setItem(row, 5, new QTableWidgetItem(QString::number(warning.getDepth())));
+        // 阈值
+        warningTable->setItem(row, 6, new QTableWidgetItem(QString::number(warning.getThresholdValue())));
+        // 时间 - 将QDateTime转换为QString
+        warningTable->setItem(row, 7, new QTableWidgetItem(warning.getWarningTime().toString("yyyy-MM-dd hh:mm:ss")));
+        
+        for (int col = 0; col < 8; col++) {
+            warningTable->item(row, col)->setTextAlignment(Qt::AlignCenter);
+        }
+    }
 }

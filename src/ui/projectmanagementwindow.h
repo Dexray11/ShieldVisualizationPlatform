@@ -20,8 +20,8 @@ public:
 private slots:
     void onBackClicked();
     void onNewProjectClicked();
-    void onEditProject(int row);
-    void onDeleteProject(int row);
+    void onEditProject(int projectId);
+    void onDeleteProject(int projectId);
     void onTabChanged(int index);
     void onPublishNews();
     void onDeleteSelectedNews();
@@ -36,6 +36,12 @@ private slots:
     void onRefreshSupplementary();  // 刷新补勘信息
     void onFilterSupplementary();  // 筛选补勘信息
     void onExportSupplementary();  // 导出补勘信息
+    void onSearchProject();  // 搜索项目
+    void onRefreshProject();  // 刷新项目
+    void onSearchWarning();  // 搜索预警信息
+    void onRefreshWarning();  // 刷新预警信息
+    void onFilterWarning();  // 筛选预警信息
+    void onExportWarning();  // 导出预警信息
 
 private:
     void setupUI();
@@ -48,6 +54,7 @@ private:
     void createSupplementaryDataTab();
     void createNewsModuleTab();
     void loadProjectData();
+    void loadWarningData();  // 加载预警信息数据
     void loadExcavationData();  // 加载掘进信息数据
     void loadSupplementaryData();  // 加载补勘数据
     void showNewProjectDialog();
@@ -60,6 +67,9 @@ private:
     // 项目总览标签页组件
     QTableWidget *projectTable;
     QPushButton *newProjectButton;
+    QLineEdit *projectSearchEdit;
+    QPushButton *searchProjectButton;
+    QPushButton *refreshProjectButton;
     
     // 其他标签页表格
     QTableWidget *warningTable;

@@ -374,11 +374,11 @@ void DashboardWindow::createContactPanel()
     contactTitle->setStyleSheet(QString("color: %1; font-size: 14px; font-weight: bold;")
                                     .arg(StyleHelper::COLOR_TEXT_DARK));
 
-    contact1Label = new QLabel("张三  电话：15555555555", contactPanel);
+    contact1Label = new QLabel("联系人1：未填写", contactPanel);
     contact1Label->setStyleSheet(QString("color: %1; font-size: 13px; margin-top: 10px;")
                                      .arg(StyleHelper::COLOR_TEXT_DARK));
 
-    contact2Label = new QLabel("李四  电话：16666666666", contactPanel);
+    contact2Label = new QLabel("联系人2：未填写", contactPanel);
     contact2Label->setStyleSheet(QString("color: %1; font-size: 13px; margin-top: 5px;")
                                      .arg(StyleHelper::COLOR_TEXT_DARK));
 
@@ -686,9 +686,33 @@ void DashboardWindow::showSingleProject(const QString &projectName)
                             .arg(warningCount)
                             .arg(project.getStartDate()));
 
-    // 联系人信息（这里可以扩展为从数据库读取，目前使用默认值）
-    contact1Label->setText("张三  电话：15555555555");
-    contact2Label->setText("李四  电话：16666666666");
+    // 联系人信息 - 从数据库读取
+    QString contact1Name = project.getEmergencyContact1Name();
+    QString contact1Phone = project.getEmergencyContact1Phone();
+    QString contact2Name = project.getEmergencyContact2Name();
+    QString contact2Phone = project.getEmergencyContact2Phone();
+    
+    // 显示联系人1
+    if (!contact1Name.isEmpty() && !contact1Phone.isEmpty()) {
+        contact1Label->setText(QString("%1  电话：%2").arg(contact1Name).arg(contact1Phone));
+    } else if (!contact1Name.isEmpty()) {
+        contact1Label->setText(QString("%1  电话：未填写").arg(contact1Name));
+    } else if (!contact1Phone.isEmpty()) {
+        contact1Label->setText(QString("未命名  电话：%1").arg(contact1Phone));
+    } else {
+        contact1Label->setText("联系人1：未填写");
+    }
+    
+    // 显示联系人2
+    if (!contact2Name.isEmpty() && !contact2Phone.isEmpty()) {
+        contact2Label->setText(QString("%1  电话：%2").arg(contact2Name).arg(contact2Phone));
+    } else if (!contact2Name.isEmpty()) {
+        contact2Label->setText(QString("%1  电话：未填写").arg(contact2Name));
+    } else if (!contact2Phone.isEmpty()) {
+        contact2Label->setText(QString("未命名  电话：%1").arg(contact2Phone));
+    } else {
+        contact2Label->setText("联系人2：未填写");
+    }
     
     // 清除旧的进度条
     QLayoutItem *item;

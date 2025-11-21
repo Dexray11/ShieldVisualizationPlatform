@@ -243,9 +243,6 @@ bool ProjectDAO::insertProject(const Project &project)
     query.bindValue(":contact1Phone", project.getEmergencyContact1Phone());
     query.bindValue(":contact2Name", project.getEmergencyContact2Name());
     query.bindValue(":contact2Phone", project.getEmergencyContact2Phone());
-    query.bindValue(":currentMileage", project.getCurrentMileage());
-    query.bindValue(":startMileage", project.getStartMileage());
-    query.bindValue(":endMileage", project.getEndMileage());
     
     if (!query.exec()) {
         lastError = "插入项目失败: " + query.lastError().text();
@@ -253,6 +250,7 @@ bool ProjectDAO::insertProject(const Project &project)
         return false;
     }
     
+    qDebug() << "项目插入成功：" << project.getProjectName();
     return true;
 }
 
