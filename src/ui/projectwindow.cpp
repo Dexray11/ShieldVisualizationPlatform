@@ -10,6 +10,8 @@
 #include "../database/MileageDAO.h"
 #include "../database/ShieldPositionDAO.h"
 #include "../database/ExcavationParameterDAO.h"
+#include "../database/ProspectingDataDAO.h"
+#include "../models/ProspectingData.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -756,6 +758,16 @@ void ProjectWindow::loadSupplementaryData()
     clearMainContent();
     QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(mainContent->layout());
 
+    // 从数据库加载补勘数据
+    ProspectingDataDAO dao;
+    QList<ProspectingData> dataList = dao.getProspectingDataByProjectId(projectId);
+    ProspectingData latestData;
+    bool hasData = !dataList.isEmpty();
+    if (hasData) {
+        latestData = dataList.first();
+        qDebug() << "补勘数据加载成功，ID:" << latestData.getProspectingId();
+    }
+
     QLabel *titleLabel = new QLabel("补勘数据", mainContent);
     titleLabel->setStyleSheet(QString("font-size: 20px; font-weight: bold; color: %1;")
                                   .arg(StyleHelper::COLOR_PRIMARY));
@@ -782,10 +794,19 @@ void ProjectWindow::loadSupplementaryData()
     )").arg(StyleHelper::COLOR_BORDER));
     
     QVBoxLayout *cutterLayout = new QVBoxLayout(cutterPanel);
-    QLabel *cutterPlaceholder = new QLabel("刀盘受力图\n(预留位置)", cutterPanel);
-    cutterPlaceholder->setAlignment(Qt::AlignCenter);
-    cutterPlaceholder->setStyleSheet("font-size: 16px; color: #666;");
-    cutterLayout->addWidget(cutterPlaceholder);
+    
+    // 显示刀盘受力图
+    QLabel *cutterImageLabel = new QLabel(cutterPanel);
+    QPixmap cutterPixmap(":/images/cutter_head.png");
+    if (!cutterPixmap.isNull()) {
+        // 缩放图片以适应面板大小，保持宽高比
+        cutterImageLabel->setPixmap(cutterPixmap.scaled(330, 330, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        cutterImageLabel->setText("刀盘受力图\n(图片加载失败)");
+        cutterImageLabel->setStyleSheet("font-size: 16px; color: #666;");
+    }
+    cutterImageLabel->setAlignment(Qt::AlignCenter);
+    cutterLayout->addWidget(cutterImageLabel);
     
     // 刀盘受力情况信息
     QWidget *cutterInfoPanel = new QWidget(leftWidget);
@@ -805,6 +826,25 @@ void ProjectWindow::loadSupplementaryData()
     cutterTitle->setStyleSheet("font-weight: bold; font-size: 14px;");
     cutterInfoLayout->addWidget(cutterTitle);
     
+    // 刀盘受力
+    QWidget *force1Widget = new QWidget(cutterInfoPanel);
+    QHBoxLayout *force1Layout = new QHBoxLayout(force1Widget);
+    force1Layout->setContentsMargins(0, 0, 0, 0);
+    force1Layout->setSpacing(10);
+    
+    QLabel *forceLabel1 = new QLabel("刀盘受力:", force1Widget);
+    forceLabel1->setMinimumWidth(120);
+    QLineEdit *forceInput1 = new QLineEdit(force1Widget);
+    if (hasData) {
+        forceInput1->setText(QString::number(latestData.getCutterForce(), 'f', 2) + " kN");
+    } else {
+        forceInput1->setPlaceholderText("暂无数据");
+    }
+    forceInput1->setReadOnly(true);
+    forceInput1->setStyleSheet("QLineEdit { background-color: #f5f5f5; border: 1px solid #ccc; padding: 3px; }");
+    force1Layout->addWidget(forceLabel1);
+    force1Layout->addWidget(forceInput1);
+    
     // 刀具贯入阻力
     QWidget *resist1Widget = new QWidget(cutterInfoPanel);
     QHBoxLayout *resist1Layout = new QHBoxLayout(resist1Widget);
@@ -814,7 +854,12 @@ void ProjectWindow::loadSupplementaryData()
     QLabel *cutterInfo1 = new QLabel("刀具贯入阻力:", resist1Widget);
     cutterInfo1->setMinimumWidth(120);
     QLineEdit *resist1Input = new QLineEdit(resist1Widget);
-    resist1Input->setPlaceholderText("数值");
+    if (hasData) {
+        resist1Input->setText(QString::number(latestData.getCutterPenetrationResistance(), 'f', 2) + " kN");
+    } else {
+        resist1Input->setPlaceholderText("暂无数据");
+    }
+    resist1Input->setReadOnly(true);
     resist1Input->setStyleSheet("QLineEdit { background-color: #f5f5f5; border: 1px solid #ccc; padding: 3px; }");
     
     resist1Layout->addWidget(cutterInfo1);
@@ -829,12 +874,18 @@ void ProjectWindow::loadSupplementaryData()
     QLabel *cutterInfo2 = new QLabel("刀盘正面摩擦力矩:", resist2Widget);
     cutterInfo2->setMinimumWidth(120);
     QLineEdit *resist2Input = new QLineEdit(resist2Widget);
-    resist2Input->setPlaceholderText("数值");
+    if (hasData) {
+        resist2Input->setText(QString::number(latestData.getFaceFrictionTorque(), 'f', 2) + " kN·m");
+    } else {
+        resist2Input->setPlaceholderText("暂无数据");
+    }
+    resist2Input->setReadOnly(true);
     resist2Input->setStyleSheet("QLineEdit { background-color: #f5f5f5; border: 1px solid #ccc; padding: 3px; }");
     
     resist2Layout->addWidget(cutterInfo2);
     resist2Layout->addWidget(resist2Input);
     
+    cutterInfoLayout->addWidget(force1Widget);
     cutterInfoLayout->addWidget(resist1Widget);
     cutterInfoLayout->addWidget(resist2Widget);
     cutterInfoLayout->addStretch();
@@ -863,35 +914,48 @@ void ProjectWindow::loadSupplementaryData()
     geophysicalLayout->setContentsMargins(15, 15, 15, 15);
     geophysicalLayout->setSpacing(5);
     
-    QStringList geophysicalData = {
-        "波速、波幅反射系数:",
-        "视电阻率:",
-        "应力梯度:",
-        "前方5m岩石含水概率:",
-        "掌子面岩石物性参数:",
-        "围岩危险等级:"
-    };
-    
-    for (const QString &item : geophysicalData) {
+    // 创建物探数据字段
+    auto createGeoField = [&](const QString& label, const QString& value) {
         QWidget *itemWidget = new QWidget(geophysicalPanel);
         QHBoxLayout *itemLayout = new QHBoxLayout(itemWidget);
         itemLayout->setContentsMargins(0, 0, 0, 0);
         itemLayout->setSpacing(10);
         
-        QLabel *label = new QLabel(item, itemWidget);
-        label->setStyleSheet("font-size: 13px;");
-        label->setMinimumWidth(150);
+        QLabel *fieldLabel = new QLabel(label, itemWidget);
+        fieldLabel->setStyleSheet("font-size: 13px;");
+        fieldLabel->setMinimumWidth(150);
         
         QLineEdit *valueInput = new QLineEdit(itemWidget);
-        valueInput->setPlaceholderText("数值");
+        valueInput->setText(value);
+        valueInput->setReadOnly(true);
         valueInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
         valueInput->setMinimumWidth(150);
         
-        itemLayout->addWidget(label);
+        itemLayout->addWidget(fieldLabel);
         itemLayout->addWidget(valueInput);
         itemLayout->addStretch();
         
         geophysicalLayout->addWidget(itemWidget);
+    };
+    
+    if (hasData) {
+        createGeoField("波速、波幅反射系数:", 
+                      QString("P=%1m/s, S=%2m/s, 反射=%3")
+                        .arg(latestData.getPWaveVelocity(), 0, 'f', 1)
+                        .arg(latestData.getSWaveVelocity(), 0, 'f', 1)
+                        .arg(latestData.getWaveReflectionCoeff(), 0, 'f', 3));
+        createGeoField("视电阻率:", QString::number(latestData.getApparentResistivity(), 'f', 2) + " Ω·m");
+        createGeoField("应力梯度:", QString::number(latestData.getStressGradient(), 'f', 4) + " MPa/m");
+        createGeoField("前方5m岩石含水概率:", QString::number(latestData.getWaterProbability(), 'f', 1) + " %");
+        createGeoField("掌子面岩石物性参数:", latestData.getRockProperties());
+        createGeoField("围岩危险等级:", latestData.getRockDangerLevel());
+    } else {
+        createGeoField("波速、波幅反射系数:", "暂无数据");
+        createGeoField("视电阻率:", "暂无数据");
+        createGeoField("应力梯度:", "暂无数据");
+        createGeoField("前方5m岩石含水概率:", "暂无数据");
+        createGeoField("掌子面岩石物性参数:", "暂无数据");
+        createGeoField("围岩危险等级:", "暂无数据");
     }
     
     // 岩层参数面板(左下)
@@ -908,35 +972,45 @@ void ProjectWindow::loadSupplementaryData()
     rockLayout->setContentsMargins(15, 15, 15, 15);
     rockLayout->setSpacing(5);
     
-    QStringList rockData = {
-        "岩层参数:",
-        "纵波波速:",
-        "横波波速:",
-        "杨氏模量:",
-        "横纵波速比:",
-        "泊松比:"
-    };
+    QLabel *rockParamTitle = new QLabel("岩层参数:", rockPanel);
+    rockParamTitle->setStyleSheet("font-weight: bold; font-size: 13px;");
+    rockLayout->addWidget(rockParamTitle);
     
-    for (const QString &item : rockData) {
+    auto createRockField = [&](const QString& label, const QString& value) {
         QWidget *itemWidget = new QWidget(rockPanel);
         QHBoxLayout *itemLayout = new QHBoxLayout(itemWidget);
         itemLayout->setContentsMargins(0, 0, 0, 0);
         itemLayout->setSpacing(10);
         
-        QLabel *label = new QLabel(item, itemWidget);
-        label->setStyleSheet("font-size: 13px;");
-        label->setMinimumWidth(100);
+        QLabel *fieldLabel = new QLabel(label, itemWidget);
+        fieldLabel->setStyleSheet("font-size: 13px;");
+        fieldLabel->setMinimumWidth(100);
         
         QLineEdit *valueInput = new QLineEdit(itemWidget);
-        valueInput->setPlaceholderText("数值");
+        valueInput->setText(value);
+        valueInput->setReadOnly(true);
         valueInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
         valueInput->setMinimumWidth(120);
         
-        itemLayout->addWidget(label);
+        itemLayout->addWidget(fieldLabel);
         itemLayout->addWidget(valueInput);
         itemLayout->addStretch();
         
         rockLayout->addWidget(itemWidget);
+    };
+    
+    if (hasData) {
+        createRockField("纵波波速:", QString::number(latestData.getPWaveVelocity(), 'f', 1) + " m/s");
+        createRockField("横波波速:", QString::number(latestData.getSWaveVelocity(), 'f', 1) + " m/s");
+        createRockField("杨氏模量:", QString::number(latestData.getYoungsModulus(), 'f', 2) + " GPa");
+        createRockField("横纵波速比:", QString::number(latestData.getWaveVelocityRatio(), 'f', 3));
+        createRockField("泊松比:", QString::number(latestData.getPoissonRatio(), 'f', 3));
+    } else {
+        createRockField("纵波波速:", "暂无数据");
+        createRockField("横波波速:", "暂无数据");
+        createRockField("杨氏模量:", "暂无数据");
+        createRockField("横纵波速比:", "暂无数据");
+        createRockField("泊松比:", "暂无数据");
     }
     
     // 岩层类型面板(右下)
@@ -964,7 +1038,12 @@ void ProjectWindow::loadSupplementaryData()
     rockTypeLabel->setMinimumWidth(80);
     
     QLineEdit *typeInput = new QLineEdit(typeWidget);
-    typeInput->setPlaceholderText("类型");
+    if (hasData) {
+        typeInput->setText(latestData.getRockType());
+    } else {
+        typeInput->setPlaceholderText("暂无数据");
+    }
+    typeInput->setReadOnly(true);
     typeInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
     
     typeLayout->addWidget(rockTypeLabel);
@@ -981,7 +1060,12 @@ void ProjectWindow::loadSupplementaryData()
     rockDistLabel->setMinimumWidth(80);
     
     QLineEdit *distInput = new QLineEdit(distWidget);
-    distInput->setPlaceholderText("规律");
+    if (hasData) {
+        distInput->setText(latestData.getDistributionPattern());
+    } else {
+        distInput->setPlaceholderText("暂无数据");
+    }
+    distInput->setReadOnly(true);
     distInput->setStyleSheet("QLineEdit { background-color: white; border: 1px solid #ccc; padding: 3px; }");
     
     distLayout->addWidget(rockDistLabel);
@@ -1022,6 +1106,32 @@ void ProjectWindow::loadSupplementaryData()
     )").arg(StyleHelper::COLOR_PRIMARY)
        .arg(StyleHelper::COLOR_SECONDARY)
        .arg(StyleHelper::COLOR_ACCENT));
+    
+    // 连接上传时间间隔确认按钮
+    connect(uploadCheck, &QPushButton::clicked, [uploadInput, this]() {
+        bool ok;
+        int interval = uploadInput->text().toInt(&ok);
+        if (ok && interval > 0) {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("设置成功");
+            msgBox.setText(QString("上传时间间隔已设置为 %1 秒").arg(interval));
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                                "QLabel { color: black; } "
+                                "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+            msgBox.exec();
+            qDebug() << "上传时间间隔设置为:" << interval << "秒";
+        } else {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("输入错误");
+            msgBox.setText("请输入有效的正整数");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                                "QLabel { color: black; } "
+                                "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+            msgBox.exec();
+        }
+    });
     
     uploadLayout->addWidget(uploadLabel);
     uploadLayout->addWidget(uploadInput);

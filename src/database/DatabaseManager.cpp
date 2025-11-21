@@ -447,6 +447,43 @@ bool DatabaseManager::createTables()
     
     qDebug() << "excavation_parameters表创建成功";
     
+    // 创建补勘数据表
+    QString createProspectingDataTable = R"(
+        CREATE TABLE IF NOT EXISTS prospecting_data (
+            prospecting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            excavation_time DATETIME NOT NULL,
+            stake_mark VARCHAR(50),
+            mileage REAL,
+            cutter_force REAL,
+            cutter_penetration_resistance REAL,
+            face_friction_torque REAL,
+            p_wave_velocity REAL,
+            s_wave_velocity REAL,
+            wave_reflection_coeff REAL,
+            apparent_resistivity REAL,
+            stress_gradient REAL,
+            water_probability REAL,
+            rock_properties TEXT,
+            rock_danger_level VARCHAR(10),
+            youngs_modulus REAL,
+            poisson_ratio REAL,
+            wave_velocity_ratio REAL,
+            rock_type VARCHAR(100),
+            distribution_pattern TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(project_id)
+        )
+    )";
+    
+    if (!query.exec(createProspectingDataTable)) {
+        lastError = "创建prospecting_data表失败: " + query.lastError().text();
+        qCritical() << lastError;
+        return false;
+    }
+    
+    qDebug() << "prospecting_data表创建成功";
+    
     return true;
 }
 
@@ -768,6 +805,84 @@ bool DatabaseManager::insertDefaultData()
     }
     
     qDebug() << "掘进参数数据插入完成";
+    
+    // 插入示例补勘数据
+    qDebug() << "开始插入补勘数据...";
+    
+    query.prepare("INSERT INTO prospecting_data "
+                  "(project_id, excavation_time, stake_mark, mileage, "
+                  "cutter_force, cutter_penetration_resistance, face_friction_torque, "
+                  "p_wave_velocity, s_wave_velocity, wave_reflection_coeff, "
+                  "apparent_resistivity, stress_gradient, water_probability, "
+                  "rock_properties, rock_danger_level, "
+                  "youngs_modulus, poisson_ratio, wave_velocity_ratio, "
+                  "rock_type, distribution_pattern) "
+                  "VALUES "
+                  "(:pid, :time, :stake, :mileage, "
+                  ":cutterForce, :cutterPenetrationResistance, :faceFrictionTorque, "
+                  ":pWaveVelocity, :sWaveVelocity, :waveReflectionCoeff, "
+                  ":apparentResistivity, :stressGradient, :waterProbability, "
+                  ":rockProperties, :rockDangerLevel, "
+                  ":youngsModulus, :poissonRatio, :waveVelocityRatio, "
+                  ":rockType, :distributionPattern)");
+    
+    // 生成与掘进参数对应的补勘数据
+    for (int i = 0; i < 10; ++i) {
+        double currentMileage = baseMileage + i * 0.05;
+        int km = static_cast<int>(currentMileage / 1000.0);
+        double m = currentMileage - (km * 1000.0);
+        QString stakeMark = QString("K%1+%2").arg(km).arg(m, 0, 'f', 2);
+        
+        // 刀盘受力数据（根据地质条件变化）
+        double cutterForce = 3500.0 + (i % 5) * 200.0;
+        double cutterPenetrationResistance = 450.0 + (i % 4) * 30.0;
+        double faceFrictionTorque = 1200.0 + (i % 3) * 100.0;
+        
+        // 地质探测数据
+        double pWaveVelocity = 4200.0 + (i % 6) * 150.0;
+        double sWaveVelocity = 2400.0 + (i % 5) * 80.0;
+        double waveReflectionCoeff = 0.35 + (i % 4) * 0.05;
+        double apparentResistivity = 85.0 + (i % 7) * 10.0;
+        double stressGradient = 0.025 + (i % 3) * 0.003;
+        double waterProbability = 12.0 + (i % 8) * 2.5;
+        
+        // 岩层参数
+        double youngsModulus = 35.0 + (i % 4) * 2.5;
+        double poissonRatio = 0.22 + (i % 3) * 0.02;
+        double waveVelocityRatio = pWaveVelocity > 0 ? (sWaveVelocity / pWaveVelocity) : 0.57;
+        
+        QString rockProperties = "中风化安山岩，斑状结构，块状构造，节理裂隙发育";
+        QString rockDangerLevel = (i % 4 == 0) ? "B" : ((i % 4 == 1) ? "C" : "D");
+        QString rockType = (i % 3 == 0) ? "中风化安山岩" : ((i % 3 == 1) ? "强风化安山岩" : "微风化安山岩");
+        QString distributionPattern = "层状分布，局部节理发育";
+        
+        query.bindValue(":pid", projectId);
+        query.bindValue(":time", baseTime.addSecs(i * 300));
+        query.bindValue(":stake", stakeMark);
+        query.bindValue(":mileage", currentMileage);
+        query.bindValue(":cutterForce", cutterForce);
+        query.bindValue(":cutterPenetrationResistance", cutterPenetrationResistance);
+        query.bindValue(":faceFrictionTorque", faceFrictionTorque);
+        query.bindValue(":pWaveVelocity", pWaveVelocity);
+        query.bindValue(":sWaveVelocity", sWaveVelocity);
+        query.bindValue(":waveReflectionCoeff", waveReflectionCoeff);
+        query.bindValue(":apparentResistivity", apparentResistivity);
+        query.bindValue(":stressGradient", stressGradient);
+        query.bindValue(":waterProbability", waterProbability);
+        query.bindValue(":rockProperties", rockProperties);
+        query.bindValue(":rockDangerLevel", rockDangerLevel);
+        query.bindValue(":youngsModulus", youngsModulus);
+        query.bindValue(":poissonRatio", poissonRatio);
+        query.bindValue(":waveVelocityRatio", waveVelocityRatio);
+        query.bindValue(":rockType", rockType);
+        query.bindValue(":distributionPattern", distributionPattern);
+        
+        if (!query.exec()) {
+            qWarning() << "插入补勘数据" << stakeMark << "失败:" << query.lastError().text();
+        }
+    }
+    
+    qDebug() << "补勘数据插入完成";
     
     qDebug() << "默认数据插入完成";
     return true;

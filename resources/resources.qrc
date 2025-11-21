@@ -13,7 +13,7 @@
         <file>icons/app_icon.ico</file>
         <file>icons/flag.png</file>
         <file>icons/lock.png</file>
-        <file>images/welcome_bg.jpg</file>
         <file>images/zhongjiaologo.png</file>
+        <file>images/cutter_head.png</file>
     </qresource>
 </RCC>

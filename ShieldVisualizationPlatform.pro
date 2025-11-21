@@ -32,11 +32,13 @@ SOURCES += \
     src/database/MileageDAO.cpp \
     src/database/ShieldPositionDAO.cpp \
     src/database/ExcavationParameterDAO.cpp \
+    src/database/ProspectingDataDAO.cpp \
     src/models/User.cpp \
     src/models/Project.cpp \
     src/models/Warning.cpp \
     src/models/News.cpp \
-    src/models/ExcavationParameter.cpp
+    src/models/ExcavationParameter.cpp \
+    src/models/ProspectingData.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -62,11 +64,13 @@ HEADERS += \
     src/database/MileageDAO.h \
     src/database/ShieldPositionDAO.h \
     src/database/ExcavationParameterDAO.h \
+    src/database/ProspectingDataDAO.h \
     src/models/User.h \
     src/models/Project.h \
     src/models/Warning.h \
     src/models/News.h \
-    src/models/ExcavationParameter.h
+    src/models/ExcavationParameter.h \
+    src/models/ProspectingData.h
 
 RESOURCES += \
     resources/resources.qrc

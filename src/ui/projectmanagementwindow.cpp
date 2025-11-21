@@ -6,9 +6,11 @@
 #include "../database/WarningDAO.h"
 #include "../database/NewsDAO.h"
 #include "../database/ExcavationParameterDAO.h"
+#include "../database/ProspectingDataDAO.h"
 #include "../models/Project.h"
 #include "../models/Warning.h"
 #include "../models/News.h"
+#include "../models/ProspectingData.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -458,6 +460,7 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     
     QLineEdit *searchBox = new QLineEdit(topWidget);
+    searchBox->setObjectName("supplementarySearchBox");
     searchBox->setPlaceholderText("搜索");
     searchBox->setStyleSheet(StyleHelper::getInputStyle());
     searchBox->setMaximumWidth(250);
@@ -468,6 +471,7 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     searchBtn->setFixedSize(40, 40);
     searchBtn->setStyleSheet(StyleHelper::getButtonStyle());
     searchBtn->setToolTip("搜索");
+    connect(searchBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onSearchSupplementary);
     
     QPushButton *refreshBtn = new QPushButton(topWidget);
     refreshBtn->setIcon(QIcon(":/icons/refresh.png"));
@@ -475,6 +479,7 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     refreshBtn->setFixedSize(40, 40);
     refreshBtn->setStyleSheet(StyleHelper::getButtonStyle());
     refreshBtn->setToolTip("还原");
+    connect(refreshBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onRefreshSupplementary);
     
     QPushButton *filterBtn = new QPushButton(topWidget);
     filterBtn->setIcon(QIcon(":/icons/filter.png"));
@@ -482,6 +487,7 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     filterBtn->setFixedSize(40, 40);
     filterBtn->setStyleSheet(StyleHelper::getButtonStyle());
     filterBtn->setToolTip("筛选");
+    connect(filterBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onFilterSupplementary);
     
     QPushButton *exportBtn = new QPushButton(topWidget);
     exportBtn->setIcon(QIcon(":/icons/export.png"));
@@ -489,6 +495,7 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     exportBtn->setFixedSize(40, 40);
     exportBtn->setStyleSheet(StyleHelper::getButtonStyle());
     exportBtn->setToolTip("导出");
+    connect(exportBtn, &QPushButton::clicked, this, &ProjectManagementWindow::onExportSupplementary);
     
     topLayout->addWidget(searchBox);
     topLayout->addWidget(searchBtn);
@@ -497,14 +504,24 @@ void ProjectManagementWindow::createSupplementaryDataTab()
     topLayout->addWidget(exportBtn);
     topLayout->addStretch();
 
-    // 补勘数据表格
-    supplementaryTable = new QTableWidget(0, 10, tab);
-    supplementaryTable->setHorizontalHeaderLabels({"项目名称", "掘进时间", "掘进坐标/桩号", "刀盘受力", "刀具贯入阻力", 
-                                                   "刀盘正面摩擦力矩", "视电阻率", "前方5m含水概率", "应力梯度", "前方岩石物性参数"});
+    // 补勘数据表格 - 扩展列数以包含更多字段
+    supplementaryTable = new QTableWidget(0, 18, tab);
+    supplementaryTable->setHorizontalHeaderLabels({
+        "项目名称", "掘进时间", "桩号", "刀盘受力", "刀具贯入阻力", 
+        "刀盘正面摩擦力矩", "视电阻率", "前方5m含水概率", "应力梯度", 
+        "前方岩石物性参数", "围岩危险等级", "横纵波反射系数", "横波波速", 
+        "纵波波速", "横纵波速比", "泊松比", "杨氏模量", "岩层类型"
+    });
     supplementaryTable->setStyleSheet(StyleHelper::getTableStyle());
     supplementaryTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    supplementaryTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    supplementaryTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     supplementaryTable->setAlternatingRowColors(true);
+    supplementaryTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    
+    // 设置默认列宽
+    supplementaryTable->setColumnWidth(0, 120);  // 项目名称
+    supplementaryTable->setColumnWidth(1, 150);  // 掘进时间
+    supplementaryTable->setColumnWidth(2, 100);  // 桩号
 
     layout->addWidget(topWidget);
     layout->addWidget(supplementaryTable);
@@ -662,8 +679,39 @@ void ProjectManagementWindow::loadProjectData()
     // ========== 加载掘进信息数据（暂时清空，等待数据） ==========
     excavationTable->setRowCount(0);
     
-    // ========== 加载补勘数据（暂时清空，等待数据） ==========
+    // ========== 【修复】加载补勘数据 ==========
     supplementaryTable->setRowCount(0);
+    
+    ProspectingDataDAO prospectingDAO;
+    QList<ProspectingData> prospectingList = prospectingDAO.getAllProspectingData();
+    
+    qDebug() << "加载补勘数据，共" << prospectingList.size() << "条";
+    
+    for (const ProspectingData &data : prospectingList) {
+        int row = supplementaryTable->rowCount();
+        supplementaryTable->insertRow(row);
+        
+        // 获取项目名称
+        ProjectDAO projectDAO;
+        Project project = projectDAO.getProjectById(data.getProjectId());
+        
+        // 填充表格数据
+        supplementaryTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+        supplementaryTable->setItem(row, 1, new QTableWidgetItem(data.getExcavationTime().toString("yyyy-MM-dd HH:mm")));
+        supplementaryTable->setItem(row, 2, new QTableWidgetItem(data.getStakeMark()));
+        supplementaryTable->setItem(row, 3, new QTableWidgetItem(QString::number(data.getCutterForce(), 'f', 2)));
+        supplementaryTable->setItem(row, 4, new QTableWidgetItem(QString::number(data.getCutterPenetrationResistance(), 'f', 2)));
+        supplementaryTable->setItem(row, 5, new QTableWidgetItem(QString::number(data.getFaceFrictionTorque(), 'f', 2)));
+        supplementaryTable->setItem(row, 6, new QTableWidgetItem(QString::number(data.getApparentResistivity(), 'f', 2)));
+        supplementaryTable->setItem(row, 7, new QTableWidgetItem(QString::number(data.getWaterProbability(), 'f', 2)));
+        supplementaryTable->setItem(row, 8, new QTableWidgetItem(QString::number(data.getStressGradient(), 'f', 4)));
+        supplementaryTable->setItem(row, 9, new QTableWidgetItem(data.getRockProperties()));
+        
+        // 设置所有单元格为居中对齐
+        for (int i = 0; i < 10; ++i) {
+            supplementaryTable->item(row, i)->setTextAlignment(Qt::AlignCenter);
+        }
+    }
     
     // ========== 加载新闻数据 ==========
     NewsDAO newsDAO;
@@ -876,6 +924,10 @@ void ProjectManagementWindow::onTabChanged(int index)
     // 当切换到掘进信息标签页（index=2）时加载数据
     if (index == 2) {
         loadExcavationData();
+    }
+    // 当切换到补勘数据标签页（index=3）时加载数据
+    else if (index == 3) {
+        loadSupplementaryData();
     }
 }
 
@@ -1447,4 +1499,313 @@ void ProjectManagementWindow::onExportExcavation()
                          "QPushButton { background-color: #0078d4; color: white; "
                          "border-radius: 4px; padding: 5px 15px; }");
     msgBox.exec();
+}
+
+// 加载补勘数据
+void ProjectManagementWindow::loadSupplementaryData()
+{
+    supplementaryTable->setRowCount(0);
+    
+    // 从数据库加载所有补勘数据
+    ProspectingDataDAO dao;
+    ProjectDAO projectDAO;
+    
+    // 获取所有项目
+    QList<Project> projects = projectDAO.getAllProjects();
+    
+    for (const Project &project : projects) {
+        // 获取该项目的补勘数据
+        QList<ProspectingData> dataList = dao.getProspectingDataByProjectId(project.getProjectId());
+        
+        for (const ProspectingData &data : dataList) {
+            int row = supplementaryTable->rowCount();
+            supplementaryTable->insertRow(row);
+            
+            // 设置数据
+            supplementaryTable->setItem(row, 0, new QTableWidgetItem(project.getProjectName()));
+            supplementaryTable->setItem(row, 1, new QTableWidgetItem(data.getExcavationTime().toString("yyyy-MM-dd HH:mm:ss")));
+            supplementaryTable->setItem(row, 2, new QTableWidgetItem(data.getStakeMark()));
+            supplementaryTable->setItem(row, 3, new QTableWidgetItem(QString::number(data.getCutterForce(), 'f', 2)));
+            supplementaryTable->setItem(row, 4, new QTableWidgetItem(QString::number(data.getCutterPenetrationResistance(), 'f', 2)));
+            supplementaryTable->setItem(row, 5, new QTableWidgetItem(QString::number(data.getFaceFrictionTorque(), 'f', 2)));
+            supplementaryTable->setItem(row, 6, new QTableWidgetItem(QString::number(data.getApparentResistivity(), 'f', 2)));
+            supplementaryTable->setItem(row, 7, new QTableWidgetItem(QString::number(data.getWaterProbability(), 'f', 1) + "%"));
+            supplementaryTable->setItem(row, 8, new QTableWidgetItem(QString::number(data.getStressGradient(), 'f', 4)));
+            supplementaryTable->setItem(row, 9, new QTableWidgetItem(data.getRockProperties()));
+            supplementaryTable->setItem(row, 10, new QTableWidgetItem(data.getRockDangerLevel()));
+            supplementaryTable->setItem(row, 11, new QTableWidgetItem(QString::number(data.getWaveReflectionCoeff(), 'f', 3)));
+            supplementaryTable->setItem(row, 12, new QTableWidgetItem(QString::number(data.getSWaveVelocity(), 'f', 1)));
+            supplementaryTable->setItem(row, 13, new QTableWidgetItem(QString::number(data.getPWaveVelocity(), 'f', 1)));
+            supplementaryTable->setItem(row, 14, new QTableWidgetItem(QString::number(data.getWaveVelocityRatio(), 'f', 3)));
+            supplementaryTable->setItem(row, 15, new QTableWidgetItem(QString::number(data.getPoissonRatio(), 'f', 3)));
+            supplementaryTable->setItem(row, 16, new QTableWidgetItem(QString::number(data.getYoungsModulus(), 'f', 2)));
+            supplementaryTable->setItem(row, 17, new QTableWidgetItem(data.getRockType()));
+            
+            // 设置所有单元格为只读
+            for (int col = 0; col < supplementaryTable->columnCount(); ++col) {
+                if (supplementaryTable->item(row, col)) {
+                    supplementaryTable->item(row, col)->setFlags(supplementaryTable->item(row, col)->flags() & ~Qt::ItemIsEditable);
+                }
+            }
+        }
+    }
+    
+    qDebug() << "补勘数据加载完成，共" << supplementaryTable->rowCount() << "条记录";
+}
+
+// 搜索补勘信息
+void ProjectManagementWindow::onSearchSupplementary()
+{
+    // 查找搜索框
+    QLineEdit *searchBox = tabWidget->findChild<QLineEdit*>("supplementarySearchBox");
+    if (!searchBox) {
+        qWarning() << "未找到搜索框";
+        return;
+    }
+    
+    QString searchText = searchBox->text().trimmed();
+    
+    if (searchText.isEmpty()) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("提示");
+        msgBox.setText("请输入搜索关键词");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    // 执行搜索
+    int matchCount = 0;
+    for (int row = 0; row < supplementaryTable->rowCount(); ++row) {
+        bool match = false;
+        
+        // 在所有列中搜索
+        for (int col = 0; col < supplementaryTable->columnCount(); ++col) {
+            QTableWidgetItem *item = supplementaryTable->item(row, col);
+            if (item && item->text().contains(searchText, Qt::CaseInsensitive)) {
+                match = true;
+                break;
+            }
+        }
+        
+        supplementaryTable->setRowHidden(row, !match);
+        if (match) matchCount++;
+    }
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("搜索结果");
+    msgBox.setText(QString("找到 %1 条匹配记录").arg(matchCount));
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                        "QLabel { color: black; } "
+                        "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+    msgBox.exec();
+    
+    qDebug() << "补勘数据搜索完成，匹配" << matchCount << "条记录";
+}
+
+// 刷新补勘信息
+void ProjectManagementWindow::onRefreshSupplementary()
+{
+    // 查找搜索框并清空
+    QLineEdit *searchBox = tabWidget->findChild<QLineEdit*>("supplementarySearchBox");
+    if (searchBox) {
+        searchBox->clear();
+    }
+    
+    // 显示所有行
+    for (int row = 0; row < supplementaryTable->rowCount(); ++row) {
+        supplementaryTable->setRowHidden(row, false);
+    }
+    
+    // 重新加载数据
+    loadSupplementaryData();
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("刷新成功");
+    msgBox.setText("补勘数据已刷新");
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                        "QLabel { color: black; } "
+                        "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+    msgBox.exec();
+    
+    qDebug() << "补勘数据已刷新";
+}
+
+// 筛选补勘信息
+void ProjectManagementWindow::onFilterSupplementary()
+{
+    // 创建筛选对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("筛选补勘数据");
+    dialog.setMinimumWidth(400);
+    
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    
+    // 项目名称筛选
+    QHBoxLayout *projectLayout = new QHBoxLayout();
+    projectLayout->addWidget(new QLabel("项目名称:"));
+    QLineEdit *projectFilter = new QLineEdit(&dialog);
+    projectFilter->setPlaceholderText("输入项目名称");
+    projectLayout->addWidget(projectFilter);
+    layout->addLayout(projectLayout);
+    
+    // 围岩危险等级筛选
+    QHBoxLayout *dangerLayout = new QHBoxLayout();
+    dangerLayout->addWidget(new QLabel("围岩危险等级:"));
+    QComboBox *dangerCombo = new QComboBox(&dialog);
+    dangerCombo->addItem("全部", "");
+    dangerCombo->addItem("A级", "A");
+    dangerCombo->addItem("B级", "B");
+    dangerCombo->addItem("C级", "C");
+    dangerCombo->addItem("D级", "D");
+    dangerLayout->addWidget(dangerCombo);
+    layout->addLayout(dangerLayout);
+    
+    // 按钮
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    QPushButton *okButton = new QPushButton("确定", &dialog);
+    QPushButton *cancelButton = new QPushButton("取消", &dialog);
+    
+    okButton->setStyleSheet("QPushButton { background-color: #0078d4; color: white; border-radius: 4px; padding: 5px 15px; }");
+    cancelButton->setStyleSheet("QPushButton { background-color: white; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px 15px; }");
+    
+    connect(okButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(cancelButton, &QPushButton::clicked, &dialog, &QDialog::reject);
+    
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(okButton);
+    buttonLayout->addWidget(cancelButton);
+    layout->addLayout(buttonLayout);
+    
+    dialog.setStyleSheet("QDialog { background-color: white; }");
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        QString projectName = projectFilter->text().trimmed();
+        QString dangerLevel = dangerCombo->currentData().toString();
+        
+        int matchCount = 0;
+        for (int row = 0; row < supplementaryTable->rowCount(); ++row) {
+            bool match = true;
+            
+            // 项目名称筛选
+            if (!projectName.isEmpty()) {
+                QTableWidgetItem *item = supplementaryTable->item(row, 0);
+                if (!item || !item->text().contains(projectName, Qt::CaseInsensitive)) {
+                    match = false;
+                }
+            }
+            
+            // 围岩危险等级筛选
+            if (!dangerLevel.isEmpty() && match) {
+                QTableWidgetItem *item = supplementaryTable->item(row, 10);
+                if (!item || item->text() != dangerLevel) {
+                    match = false;
+                }
+            }
+            
+            supplementaryTable->setRowHidden(row, !match);
+            if (match) matchCount++;
+        }
+        
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("筛选结果");
+        msgBox.setText(QString("筛选后显示 %1 条记录").arg(matchCount));
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+        msgBox.exec();
+        
+        qDebug() << "补勘数据筛选完成，显示" << matchCount << "条记录";
+    }
+}
+
+// 导出补勘信息
+void ProjectManagementWindow::onExportSupplementary()
+{
+    // 检查是否有数据
+    if (supplementaryTable->rowCount() == 0) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("提示");
+        msgBox.setText("没有可导出的数据");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    // 选择保存位置
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        "导出补勘数据",
+        QDir::homePath() + "/supplementary_data.csv",
+        "CSV Files (*.csv);;All Files (*)"
+    );
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    // 写入CSV文件
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("错误");
+        msgBox.setText("无法创建文件！");
+        msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                            "QLabel { color: black; } "
+                            "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+        msgBox.exec();
+        return;
+    }
+    
+    QTextStream out(&file);
+    out.setEncoding(QStringConverter::Utf8);
+    
+    // 写入表头
+    QStringList headers;
+    for (int col = 0; col < supplementaryTable->columnCount(); ++col) {
+        headers << supplementaryTable->horizontalHeaderItem(col)->text();
+    }
+    out << headers.join(",") << "\n";
+    
+    // 写入数据
+    for (int row = 0; row < supplementaryTable->rowCount(); ++row) {
+        if (supplementaryTable->isRowHidden(row)) {
+            continue;  // 跳过隐藏的行
+        }
+        
+        QStringList rowData;
+        for (int col = 0; col < supplementaryTable->columnCount(); ++col) {
+            QTableWidgetItem *item = supplementaryTable->item(row, col);
+            QString text = item ? item->text() : "";
+            // 处理包含逗号或换行符的数据
+            if (text.contains(",") || text.contains("\n")) {
+                text = "\"" + text + "\"";
+            }
+            rowData << text;
+        }
+        out << rowData.join(",") << "\n";
+    }
+    
+    file.close();
+    
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("成功");
+    msgBox.setText(QString("数据已导出到：%1").arg(fileName));
+    msgBox.setStyleSheet("QMessageBox { background-color: white; } "
+                        "QLabel { color: black; } "
+                        "QPushButton { background-color: white; color: black; border: 1px solid #ccc; padding: 5px 15px; }");
+    msgBox.exec();
+    
+    qDebug() << "补勘数据已导出到:" << fileName;
 }

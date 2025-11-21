@@ -22,11 +22,13 @@ debug/TunnelProfileDAO.o
 debug/MileageDAO.o
 debug/ShieldPositionDAO.o
 debug/ExcavationParameterDAO.o
+debug/ProspectingDataDAO.o
 debug/User.o
 debug/Project.o
 debug/Warning.o
 debug/News.o
 debug/ExcavationParameter.o
+debug/ProspectingData.o
 debug/qrc_resources.o
 debug/moc_loginwindow.o
 debug/moc_mainmenuwindow.o

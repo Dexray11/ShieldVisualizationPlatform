@@ -32,6 +32,10 @@ private slots:
     void onRefreshExcavation();  // 刷新掘进信息
     void onFilterExcavation();  // 筛选掘进信息
     void onExportExcavation();  // 导出掘进信息
+    void onSearchSupplementary();  // 搜索补勘信息
+    void onRefreshSupplementary();  // 刷新补勘信息
+    void onFilterSupplementary();  // 筛选补勘信息
+    void onExportSupplementary();  // 导出补勘信息
 
 private:
     void setupUI();
@@ -45,6 +49,7 @@ private:
     void createNewsModuleTab();
     void loadProjectData();
     void loadExcavationData();  // 加载掘进信息数据
+    void loadSupplementaryData();  // 加载补勘数据
     void showNewProjectDialog();
     
     QWidget *centralWidget;
