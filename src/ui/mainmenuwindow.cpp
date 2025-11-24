@@ -2,6 +2,8 @@
 #include "dashboardwindow.h"
 #include "projectmanagementwindow.h"
 #include "../utils/stylehelper.h"
+#include "../api/ApiManager.h"
+#include "../database/DatabaseManager.h"
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -21,6 +23,22 @@ MainMenuWindow::MainMenuWindow(QWidget *parent)
     int x = (screenGeometry.width() - width()) / 2;
     int y = (screenGeometry.height() - height()) / 2;
     move(x, y);
+    
+    // 启动API服务器（端口8080） - 只在首次启动
+    ApiManager* apiMgr = ApiManager::instance();
+    
+    // 如果API服务器未运行，则初始化并启动
+    if (!apiMgr->isApiServerRunning()) {
+        apiMgr->initialize(&DatabaseManager::instance());
+        
+        if (apiMgr->startApiServer(8080)) {
+            qInfo() << "API服务器已启动，端口: 8080";
+        } else {
+            qWarning() << "API服务器启动失败";
+        }
+    } else {
+        qDebug() << "API服务器已在运行，无需重复启动";
+    }
 }
 
 MainMenuWindow::~MainMenuWindow()

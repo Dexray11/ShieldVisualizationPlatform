@@ -29,6 +29,9 @@ release/Warning.o
 release/News.o
 release/ExcavationParameter.o
 release/ProspectingData.o
+release/ApiServer.o
+release/DataSimulator.o
+release/ApiManager.o
 release/qrc_resources.o
 release/moc_loginwindow.o
 release/moc_mainmenuwindow.o
@@ -41,3 +44,6 @@ release/moc_mapwidget.o
 release/moc_positioningdialog.o
 release/moc_DataImportTool.o
 release/moc_GeoDataImporter.o
+release/moc_ApiServer.o
+release/moc_DataSimulator.o
+release/moc_ApiManager.o

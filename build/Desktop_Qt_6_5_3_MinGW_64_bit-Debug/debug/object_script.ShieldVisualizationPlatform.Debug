@@ -29,6 +29,9 @@ debug/Warning.o
 debug/News.o
 debug/ExcavationParameter.o
 debug/ProspectingData.o
+debug/ApiServer.o
+debug/DataSimulator.o
+debug/ApiManager.o
 debug/qrc_resources.o
 debug/moc_loginwindow.o
 debug/moc_mainmenuwindow.o
@@ -41,3 +44,6 @@ debug/moc_mapwidget.o
 debug/moc_positioningdialog.o
 debug/moc_DataImportTool.o
 debug/moc_GeoDataImporter.o
+debug/moc_ApiServer.o
+debug/moc_DataSimulator.o
+debug/moc_ApiManager.o

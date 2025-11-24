@@ -38,7 +38,10 @@ SOURCES += \
     src/models/Warning.cpp \
     src/models/News.cpp \
     src/models/ExcavationParameter.cpp \
-    src/models/ProspectingData.cpp
+    src/models/ProspectingData.cpp \
+    src/api/ApiServer.cpp \
+    src/api/DataSimulator.cpp \
+    src/api/ApiManager.cpp
 
 HEADERS += \
     src/ui/loginwindow.h \
@@ -70,7 +73,10 @@ HEADERS += \
     src/models/Warning.h \
     src/models/News.h \
     src/models/ExcavationParameter.h \
-    src/models/ProspectingData.h
+    src/models/ProspectingData.h \
+    src/api/ApiServer.h \
+    src/api/DataSimulator.h \
+    src/api/ApiManager.h
 
 RESOURCES += \
     resources/resources.qrc
